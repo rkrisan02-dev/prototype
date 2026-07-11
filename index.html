@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PicknPack.ai — IMS / WMS Prototype</title>
+<style>
+:root{
+  --bg:#f4f6f9; --panel:#ffffff; --ink:#17202b; --muted:#68778a; --line:#e3e8ee;
+  --brand:#0d7a5f; --brand2:#0fa878; --brand-soft:#e2f4ee;
+  --side:#122436; --side-ink:#b9c7d4; --side-active:#0fa878;
+  --amber:#b45309; --amber-soft:#fef3c7; --red:#b91c1c; --red-soft:#fee2e2;
+  --blue:#1d4ed8; --blue-soft:#dbeafe; --green:#15803d; --green-soft:#dcfce7;
+  --purple:#7e22ce; --purple-soft:#f3e8ff; --gray-soft:#eef1f5;
+  --radius:10px; --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);display:flex;height:100vh;overflow:hidden}
+/* ---------- sidebar ---------- */
+#sidebar{width:232px;background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;flex-shrink:0}
+#logo{padding:16px 18px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+#logo .name{font-size:18px;font-weight:700;color:#fff}
+#logo .name span{color:var(--side-active)}
+#logo .sub{font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:#7b8fa2;margin-top:2px}
+#nav{flex:1;overflow-y:auto;padding:8px 0 20px}
+#nav::-webkit-scrollbar{width:5px}#nav::-webkit-scrollbar-thumb{background:#2c4258;border-radius:3px}
+.nav-group{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#617a90;padding:14px 18px 5px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 18px;cursor:pointer;font-size:13px;border-left:3px solid transparent;white-space:nowrap}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#fff}
+.nav-item.active{background:rgba(15,168,120,.13);border-left-color:var(--side-active);color:#fff}
+.nav-item .ic{width:17px;text-align:center;opacity:.85;font-size:13px}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:9px;padding:1px 6px}
+/* ---------- topbar ---------- */
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#topbar{height:54px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 18px;flex-shrink:0}
+#crumb{font-weight:600;font-size:15px}
+#globalscan{margin-left:auto;display:flex;align-items:center;gap:8px}
+#globalscan input{width:230px;padding:7px 10px 7px 30px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;background:#fafbfc url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%2368778a" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M11 8v8M15 8v8"/></svg>') 9px center no-repeat}
+#globalscan input:focus{outline:none;border-color:var(--brand2)}
+.pillsel{display:flex;align-items:center;gap:6px;background:var(--gray-soft);border-radius:8px;padding:4px 8px;font-size:12.5px}
+.pillsel select{border:none;background:transparent;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer}
+.pillsel select:focus{outline:none}
+.pillsel .lbl{color:var(--muted);font-size:11px}
+/* ---------- content ---------- */
+#content{flex:1;overflow-y:auto;padding:20px 22px 60px}
+.page-head{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.page-head h1{font-size:19px;font-weight:700}
+.page-head .desc{color:var(--muted);font-size:12.5px;width:100%}
+.spacer{flex:1}
+/* cards / kpi */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;box-shadow:var(--shadow)}
+.kpi .v{font-size:22px;font-weight:700}
+.kpi .l{font-size:11.5px;color:var(--muted);margin-top:2px}
+.kpi.warn .v{color:var(--amber)} .kpi.bad .v{color:var(--red)} .kpi.good .v{color:var(--green)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px}
+.card-h{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:8px}
+.card-b{padding:14px 16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media(max-width:1100px){.grid2,.grid3{grid-template-columns:1fr}}
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:#fafbfc;white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid #eef1f4;vertical-align:middle}
+tr:hover td{background:#f8fafc}
+tr.clickable{cursor:pointer}
+td .sub{font-size:11px;color:var(--muted)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.empty{padding:26px;text-align:center;color:var(--muted);font-size:13px}
+/* badges */
+.b{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.b.gray{background:var(--gray-soft);color:#475467}.b.green{background:var(--green-soft);color:var(--green)}
+.b.amber{background:var(--amber-soft);color:var(--amber)}.b.red{background:var(--red-soft);color:var(--red)}
+.b.blue{background:var(--blue-soft);color:var(--blue)}.b.purple{background:var(--purple-soft);color:var(--purple)}
+.b.teal{background:var(--brand-soft);color:var(--brand)}
+/* buttons & forms */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink)}
+.btn:hover{background:#f4f6f8}
+.btn.p{background:var(--brand);border-color:var(--brand);color:#fff}.btn.p:hover{background:#0a6b53}
+.btn.danger{color:var(--red);border-color:#f3c6c6}.btn.danger:hover{background:var(--red-soft)}
+.btn.sm{padding:4px 10px;font-size:11.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+input[type=text],input[type=number],input[type=date],input[type=email],select,textarea{padding:7px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand2)}
+.frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px}
+.fld label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.filters input,.filters select{width:auto;min-width:140px}
+/* modal */
+#modal-bg{position:fixed;inset:0;background:rgba(13,25,38,.5);display:none;align-items:flex-start;justify-content:center;z-index:100;padding:40px 16px;overflow-y:auto}
+#modal-bg.open{display:flex}
+#modal{background:#fff;border-radius:14px;width:100%;max-width:680px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#modal.wide{max-width:900px}
+#modal-h{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;font-weight:700;font-size:15px}
+#modal-h .x{margin-left:auto;cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
+#modal-b{padding:18px 20px;max-height:65vh;overflow-y:auto}
+#modal-f{padding:13px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+/* toast */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{background:#17202b;color:#fff;padding:11px 16px;border-radius:10px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:360px;animation:tin .2s ease}
+.toast.ok{border-left:4px solid var(--brand2)} .toast.err{border-left:4px solid #ef4444}
+@keyframes tin{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+/* barcode */
+.barcode{display:inline-block;text-align:center;padding:8px 10px 4px;background:#fff;border:1px solid var(--line);border-radius:6px}
+.barcode .bars{height:38px;width:150px;background:repeating-linear-gradient(90deg,#000 0 2px,#fff 2px 4px,#000 4px 7px,#fff 7px 8px,#000 8px 9px,#fff 9px 12px);margin-bottom:3px}
+.barcode .bc-txt{font-family:Consolas,monospace;font-size:11px;letter-spacing:1px}
+/* scan station */
+.scanbox{border:2px dashed var(--brand2);border-radius:12px;padding:14px;background:var(--brand-soft)}
+.scanbox input{font-size:16px;font-family:Consolas,monospace;padding:10px 12px}
+.scan-log{font-family:Consolas,monospace;font-size:12px;background:#0f1c29;color:#8fd6bb;border-radius:8px;padding:10px 12px;max-height:150px;overflow-y:auto;margin-top:10px}
+.scan-log .bad{color:#ff9d9d}
+/* checklist */
+.chk-item{display:flex;align-items:flex-start;gap:10px;padding:9px 4px;border-bottom:1px solid #eef1f4}
+.chk-item input[type=checkbox]{width:17px;height:17px;margin-top:2px;accent-color:var(--brand);cursor:pointer}
+.chk-item .who{margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap}
+.chk-item.done .txt{text-decoration:line-through;color:var(--muted)}
+/* misc */
+.progress{height:7px;background:var(--gray-soft);border-radius:4px;overflow:hidden;min-width:70px}
+.progress i{display:block;height:100%;background:var(--brand2)}
+.tag{font-size:10.5px;background:var(--gray-soft);border-radius:5px;padding:1px 6px;color:var(--muted)}
+.linklike{color:var(--brand);cursor:pointer;font-weight:600;text-decoration:none}
+.flow{display:flex;gap:0;flex-wrap:wrap;align-items:center;margin:8px 0}
+.flow .step{background:var(--panel);border:1.5px solid var(--line);border-radius:9px;padding:8px 13px;font-size:12px;font-weight:600;text-align:center}
+.flow .step .s2{display:block;font-weight:400;font-size:10.5px;color:var(--muted)}
+.flow .arr{padding:0 7px;color:var(--muted);font-size:15px}
+.flow .step.hl{border-color:var(--brand2);background:var(--brand-soft)}
+.mono{font-family:Consolas,monospace;font-size:12px}
+.avatar{width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.arch pre{background:#0f1c29;color:#c9d8e4;padding:16px;border-radius:10px;overflow-x:auto;font-size:12px;line-height:1.5;font-family:Consolas,monospace}
+.notice{background:var(--amber-soft);border:1px solid #f5deae;border-radius:9px;padding:10px 14px;font-size:12.5px;color:#7c4a03;margin-bottom:14px}
+.split{display:flex;gap:16px;align-items:flex-start}.split>*{flex:1}
+
+/* tabs */
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--line);margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:8px 16px;cursor:pointer;font-weight:600;font-size:13px;color:var(--muted);border-bottom:2.5px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab.active{color:var(--brand);border-bottom-color:var(--brand)}
+/* icon kpis */
+.kpi{display:flex;gap:12px;align-items:center;cursor:default}
+.kpi .ico{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.kpi.click{cursor:pointer}.kpi.click:hover{border-color:var(--brand2)}
+.kpi.sel{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+/* stepper */
+.stepper{display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;box-shadow:var(--shadow);overflow-x:auto}
+.stepper .st{display:flex;gap:10px;align-items:center;white-space:nowrap}
+.stepper .n{width:30px;height:30px;border-radius:50%;background:var(--gray-soft);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.stepper .st.done .n{background:var(--brand);color:#fff}
+.stepper .st.cur .n{background:var(--blue);color:#fff;box-shadow:0 0 0 4px var(--blue-soft)}
+.stepper .lab b{display:block;font-size:12.5px}.stepper .lab span{font-size:10.5px;color:var(--muted)}
+.stepper .sbar{height:2px;background:var(--line);flex:1;margin:0 14px;min-width:24px}
+/* donut */
+.donut{width:118px;height:118px;border-radius:50%;position:relative;flex-shrink:0}
+.donut::after{content:'';position:absolute;inset:15px;background:var(--panel);border-radius:50%}
+.donut .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1}
+/* split layout */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+@media(max-width:1100px){.layout{grid-template-columns:1fr}}
+/* order list cards */
+.ocard{border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:9px;cursor:pointer;background:var(--panel)}
+.ocard:hover{border-color:var(--brand2)}
+.ocard.sel{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+.ocard .r1{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
+.ocard .r2{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);margin-top:3px}
+/* vertical timeline */
+.vt{list-style:none;margin:4px 0}
+.vt li{position:relative;padding:0 0 15px 24px;font-size:12.5px;color:var(--muted)}
+.vt li.on{color:var(--ink);font-weight:600}
+.vt li::before{content:'';position:absolute;left:4px;top:3px;width:9px;height:9px;border-radius:50%;background:var(--line)}
+.vt li.on::before{background:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.vt li::after{content:'';position:absolute;left:8px;top:15px;bottom:0;width:1.5px;background:var(--line)}
+.vt li:last-child::after{display:none}
+.vt .when{display:block;font-size:10.5px;font-weight:400;color:var(--muted)}
+/* current pick panel */
+.bigloc{font-size:26px;font-weight:800;color:var(--blue);letter-spacing:.5px}
+.qact{display:block;width:100%;text-align:left;margin-bottom:7px}
+.copyb{cursor:pointer;color:var(--muted);font-size:12px;margin-left:4px}
+.copyb:hover{color:var(--brand)}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div id="logo"><div class="name">Pickn<span>Pack</span>.ai</div><div class="sub">IMS · WMS · Manufacturing</div></div>
+  <div id="nav"></div>
+</div>
+<div id="main">
+  <div id="topbar">
+    <div id="crumb">Dashboard</div>
+    <div id="globalscan"><input id="gscan" type="text" placeholder="Scan any barcode (order / SKU / lot / bin)…" onkeydown="if(event.key==='Enter')globalScan(this)"></div>
+    <div class="pillsel"><span class="lbl">Brand</span><select id="brandsel" onchange="setBrand(this.value)"></select></div>
+    <div class="pillsel"><span class="lbl">User</span><select id="usersel" onchange="setUser(this.value)"></select></div>
+  </div>
+  <div id="content"></div>
+</div>
+<div id="modal-bg" onclick="if(event.target===this)closeModal()"><div id="modal"><div id="modal-h"><span id="modal-t"></span><span class="x" onclick="closeModal()">×</span></div><div id="modal-b"></div><div id="modal-f"></div></div></div>
+<div id="toasts"></div>
+<script>
+/* ================= UTIL ================= */
+const $=s=>document.querySelector(s);
+const fmt$=n=>'$'+(+n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const todayISO=()=>new Date().toISOString().slice(0,10);
+const nowTs=()=>new Date().toISOString();
+const dstr=iso=>iso?new Date(iso+(iso.length===10?'T12:00':'')).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'—';
+const tstr=iso=>iso?new Date(iso).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let _id=1000; const uid=p=>(p||'ID')+'-'+(++_id);
+const daysAgo=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)};
+function toast(msg,kind){const t=document.createElement('div');t.className='toast '+(kind||'ok');t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3800)}
+function badge(txt,color){return '<span class="b '+color+'">'+esc(txt)+'</span>'}
+const STATUS_COLOR={'Draft':'gray','Sent':'blue','Partially Received':'amber','Received':'green','Closed':'gray','Open':'blue','In Production':'amber','Complete':'green','Paused':'red','New':'blue','On Hold - Stock':'red','Allocated':'teal','Picking':'amber','Picked':'purple','Packed':'purple','Shipped':'green','Delivered':'green','In Transit':'blue','Label Created':'gray','Exception':'red','Cancelled':'gray','Pending Approval':'amber','Approved':'green','Rejected':'red','Active':'green','Inactive':'gray','Paid':'green','Unpaid':'amber','Partial':'amber','Overdue':'red','Planned':'gray','Released':'blue','WIP':'amber','Done':'green','Voided':'gray','Low Stock':'red','OK':'green','Due':'amber','Connected':'green','Pending Setup':'amber','Testing':'blue','Processing':'amber'};
+function sbadge(s){return badge(s,STATUS_COLOR[s]||'gray')}
+function barcode(code){return '<div class="barcode"><div class="bars"></div><div class="bc-txt">'+esc(code)+'</div></div>'}
+function progress(p){return '<div class="progress"><i style="width:'+Math.min(100,Math.round(p))+'%"></i></div>'}
+
+/* ================= DATA STORE ================= */
+const seed=()=>({
+users:[
+ {id:'U1',name:'Rafi K. (Admin)',role:'admin'},
+ {id:'U2',name:'Maria G. (Warehouse)',role:'employee'},
+ {id:'U3',name:'James T. (Warehouse)',role:'employee'},
+ {id:'U4',name:'Sabrina L. (Production)',role:'employee'},
+ {id:'U5',name:'Earthside Farms (Brand)',role:'brand'}],
+brands:[{id:'B1',name:'Earthside Farms'},{id:'B2',name:'Wine Country Snacks'},{id:'ALL',name:'All Brands'}],
+warehouses:[{id:'W1',code:'CMNE',name:'CMNE Main Warehouse',type:'internal'},{id:'W2',code:'DOT',name:'DOT Foods',type:'3pl-node'},{id:'W3',code:'KEHE',name:'KeHE DC Network',type:'3pl-node'},{id:'W4',code:'CS',name:'C&S Sacramento',type:'3pl-node'}],
+bins:[
+ {id:'BIN1',wh:'W1',code:'RCV-DOCK',zone:'Receiving'},{id:'BIN2',wh:'W1',code:'A1-01',zone:'Pick'},{id:'BIN3',wh:'W1',code:'A1-02',zone:'Pick'},
+ {id:'BIN4',wh:'W1',code:'A1-03',zone:'Pick'},{id:'BIN5',wh:'W1',code:'B1-01',zone:'Bulk'},{id:'BIN6',wh:'W1',code:'B1-02',zone:'Bulk'},
+ {id:'BIN7',wh:'W1',code:'RM-01',zone:'Raw Materials'},{id:'BIN8',wh:'W1',code:'PM-01',zone:'Packaging'},{id:'BIN9',wh:'W1',code:'PACK-01',zone:'Pack Station'},
+ {id:'BIN10',wh:'W1',code:'SHIP-DOCK',zone:'Shipping'},{id:'BIN11',wh:'W1',code:'QC-HOLD',zone:'QC'},{id:'BIN12',wh:'W1',code:'PROD-01',zone:'Production'},
+ {id:'BIN13',wh:'W2',code:'DOT-MAIN',zone:'External'},{id:'BIN14',wh:'W3',code:'KEHE-MAIN',zone:'External'},{id:'BIN15',wh:'W4',code:'CS-MAIN',zone:'External'}],
+items:[
+ // Finished goods (brand B1)
+ {id:'I1',sku:'BBW4x10',name:'Banana Bread Walnuts 4oz',type:'FG',brand:'B1',caseQty:10,uom:'Case',price:38.5,cost:21.5,reorder:50,upc:'850012345011'},
+ {id:'I2',sku:'BTP4x10',name:'Bourbon Toffee Pecans 4oz',type:'FG',brand:'B1',caseQty:10,uom:'Case',price:36.0,cost:16.5,reorder:50,upc:'850012345028'},
+ {id:'I3',sku:'BVC4x10',name:'Bourbon Vanilla Cashews 4oz',type:'FG',brand:'B1',caseQty:10,uom:'Case',price:39.0,cost:19.6,reorder:60,upc:'850012345035'},
+ {id:'I4',sku:'CCC4x10',name:'Cinnamon Candied Cashews 4oz',type:'FG',brand:'B1',caseQty:10,uom:'Case',price:39.0,cost:21.3,reorder:40,upc:'850012345042'},
+ {id:'I5',sku:'MCP4x10',name:'Maple Cinnamon Pecans 4oz',type:'FG',brand:'B1',caseQty:10,uom:'Case',price:36.0,cost:17.2,reorder:40,upc:'850012345059'},
+ {id:'I6',sku:'DOM2.8x6',name:'Dried Organic Mangoes 2.8oz',type:'FG',brand:'B1',caseQty:6,uom:'Case',price:24.0,cost:11.8,reorder:80,upc:'850012345066'},
+ {id:'I7',sku:'CDM2.8x6',name:'Citrus Splash Dried Mangoes 2.8oz',type:'FG',brand:'B1',caseQty:6,uom:'Case',price:24.0,cost:12.1,reorder:80,upc:'850012345073'},
+ {id:'I8',sku:'LKM2.8x6',name:'Lime Kick Dried Mangoes 2.8oz',type:'FG',brand:'B1',caseQty:6,uom:'Case',price:24.0,cost:12.1,reorder:60,upc:'850012345080'},
+ {id:'I9',sku:'BBW1',name:'Banana Bread Walnuts 4oz (Unit)',type:'FG',brand:'B1',caseQty:1,uom:'Unit',price:4.99,cost:2.15,reorder:200,upc:'850012345097'},
+ {id:'I10',sku:'KIT-SAMPLER',name:'Sampler Pack (TikTok Kit)',type:'KIT',brand:'B1',caseQty:1,uom:'Kit',price:29.99,cost:9.4,reorder:0,upc:'850012345103'},
+ // Raw materials
+ {id:'I20',sku:'RM-WALNT',name:'Nuts - Walnut Halves',type:'RM',brand:'B1',caseQty:1,uom:'Lb',price:0,cost:4.1,reorder:500,upc:'RMWALNT'},
+ {id:'I21',sku:'RM-CASHW',name:'Nuts - Cashew (W320)',type:'RM',brand:'B1',caseQty:1,uom:'Lb',price:0,cost:3.65,reorder:800,upc:'RMCASHW'},
+ {id:'I22',sku:'RM-PECAN',name:'Nuts - Pecan Halves',type:'RM',brand:'B1',caseQty:1,uom:'Lb',price:0,cost:5.2,reorder:500,upc:'RMPECAN'},
+ {id:'I23',sku:'RM-GLYC',name:'Glycerin - Vegetable',type:'RM',brand:'B1',caseQty:1,uom:'Lb',price:0,cost:1.31,reorder:200,upc:'RMGLYC'},
+ {id:'I24',sku:'RM-MOLPW',name:'Powder - Molasses',type:'RM',brand:'B1',caseQty:1,uom:'Lb',price:0,cost:5.2,reorder:100,upc:'RMMOLPW'},
+ {id:'I25',sku:'RM-BLUPW',name:'Powder - Blueberry',type:'RM',brand:'B1',caseQty:1,uom:'Lb',price:0,cost:8.43,reorder:50,upc:'RMBLUPW'},
+ {id:'I26',sku:'RM-SALT',name:'Salt (Fine)',type:'RM',brand:'B1',caseQty:1,uom:'Lb',price:0,cost:0.74,reorder:50,upc:'RMSALT'},
+ {id:'I27',sku:'RM-VANEX',name:'Vanilla Extract',type:'RM',brand:'B1',caseQty:1,uom:'Lb',price:0,cost:14.0,reorder:30,upc:'RMVANEX'},
+ // Packaging
+ {id:'I30',sku:'PM-BBW4BG',name:'Pouch - BBW 4oz Printed',type:'PM',brand:'B1',caseQty:1,uom:'Unit',price:0,cost:0.11,reorder:5000,upc:'PMBBW4BG'},
+ {id:'I31',sku:'PM-BTP4BG',name:'Pouch - BTP 4oz Printed',type:'PM',brand:'B1',caseQty:1,uom:'Unit',price:0,cost:0.11,reorder:5000,upc:'PMBTP4BG'},
+ {id:'I32',sku:'PM-MC4x10',name:'Master Case 4x10',type:'PM',brand:'B1',caseQty:1,uom:'Unit',price:0,cost:0.62,reorder:1000,upc:'PMMC4X10'},
+ {id:'I33',sku:'PM-LBL',name:'Lot/Best-By Labels',type:'PM',brand:'B1',caseQty:1,uom:'Unit',price:0,cost:0.02,reorder:10000,upc:'PMLBL'},
+ // Brand 2
+ {id:'I40',sku:'WCS-TRAIL8',name:'Wine Country Trail Mix 8oz',type:'FG',brand:'B2',caseQty:12,uom:'Case',price:42.0,cost:22.0,reorder:30,upc:'851099887711'}],
+boms:{
+ 'I1':[{item:'I20',qty:2.6},{item:'I23',qty:0.2},{item:'I24',qty:0.12},{item:'I26',qty:0.05},{item:'I30',qty:10},{item:'I33',qty:10},{item:'I32',qty:1}],
+ 'I2':[{item:'I22',qty:2.6},{item:'I23',qty:0.2},{item:'I27',qty:0.04},{item:'I26',qty:0.05},{item:'I31',qty:10},{item:'I33',qty:10},{item:'I32',qty:1}],
+ 'I3':[{item:'I21',qty:2.6},{item:'I23',qty:0.2},{item:'I27',qty:0.05},{item:'I26',qty:0.05},{item:'I31',qty:10},{item:'I33',qty:10},{item:'I32',qty:1}],
+ 'I10':[{item:'I9',qty:4},{item:'I33',qty:1}]},
+lots:[
+ {id:'L1',item:'I1',lot:'25102',bestBy:'2026-10-12'},{id:'L2',item:'I1',lot:'25188',bestBy:'2026-12-30'},
+ {id:'L3',item:'I2',lot:'25190',bestBy:'2027-01-05'},{id:'L4',item:'I3',lot:'25171',bestBy:'2026-12-18'},
+ {id:'L5',item:'I6',lot:'24257',bestBy:'2026-09-12'},{id:'L6',item:'I7',lot:'24268',bestBy:'2026-09-13'},
+ {id:'L7',item:'I8',lot:'24270',bestBy:'2026-09-15'},{id:'L8',item:'I9',lot:'25188',bestBy:'2026-12-30'},
+ {id:'L9',item:'I20',lot:'RM-7781',bestBy:'2026-11-01'},{id:'L10',item:'I21',lot:'RM-7802',bestBy:'2027-02-01'},
+ {id:'L11',item:'I22',lot:'RM-7810',bestBy:'2026-12-15'},{id:'L12',item:'I23',lot:'RM-7755',bestBy:'2028-01-01'},
+ {id:'L13',item:'I24',lot:'RM-7791',bestBy:'2027-06-01'},{id:'L14',item:'I26',lot:'RM-7700',bestBy:'2029-01-01'},
+ {id:'L15',item:'I30',lot:'PM-2210',bestBy:''},{id:'L16',item:'I31',lot:'PM-2211',bestBy:''},{id:'L17',item:'I32',lot:'PM-2188',bestBy:''},
+ {id:'L18',item:'I33',lot:'PM-2100',bestBy:''},{id:'L19',item:'I4',lot:'25150',bestBy:'2026-11-20'},{id:'L20',item:'I5',lot:'25151',bestBy:'2026-11-21'},
+ {id:'L21',item:'I40',lot:'WCS-88',bestBy:'2026-10-01'},{id:'L22',item:'I27',lot:'RM-7820',bestBy:'2027-08-01'},{id:'L23',item:'I10',lot:'25188K',bestBy:'2026-12-30'}],
+inv:[ // {item,lot,bin,qty,alloc}
+ {item:'I1',lot:'L1',bin:'BIN2',qty:38,alloc:0},{item:'I1',lot:'L2',bin:'BIN5',qty:120,alloc:0},
+ {item:'I2',lot:'L3',bin:'BIN2',qty:53,alloc:0},{item:'I3',lot:'L4',bin:'BIN3',qty:64,alloc:0},
+ {item:'I4',lot:'L19',bin:'BIN3',qty:22,alloc:0},{item:'I5',lot:'L20',bin:'BIN4',qty:31,alloc:0},
+ {item:'I6',lot:'L5',bin:'BIN4',qty:210,alloc:0},{item:'I7',lot:'L6',bin:'BIN4',qty:101,alloc:0},
+ {item:'I8',lot:'L7',bin:'BIN2',qty:74,alloc:0},{item:'I9',lot:'L8',bin:'BIN3',qty:460,alloc:0},
+ {item:'I10',lot:'L23',bin:'BIN2',qty:25,alloc:0},
+ {item:'I20',lot:'L9',bin:'BIN7',qty:840,alloc:0},{item:'I21',lot:'L10',bin:'BIN7',qty:2600,alloc:0},
+ {item:'I22',lot:'L11',bin:'BIN7',qty:410,alloc:0},{item:'I23',lot:'L12',bin:'BIN7',qty:551,alloc:0},
+ {item:'I24',lot:'L13',bin:'BIN7',qty:180,alloc:0},{item:'I26',lot:'L14',bin:'BIN7',qty:96,alloc:0},
+ {item:'I27',lot:'L22',bin:'BIN7',qty:60,alloc:0},
+ {item:'I30',lot:'L15',bin:'BIN8',qty:14200,alloc:0},{item:'I31',lot:'L16',bin:'BIN8',qty:9800,alloc:0},
+ {item:'I32',lot:'L17',bin:'BIN8',qty:2300,alloc:0},{item:'I33',lot:'L18',bin:'BIN8',qty:41000,alloc:0},
+ {item:'I1',lot:'L2',bin:'BIN13',qty:80,alloc:0},{item:'I6',lot:'L5',bin:'BIN14',qty:150,alloc:0},
+ {item:'I3',lot:'L4',bin:'BIN15',qty:96,alloc:0},{item:'I40',lot:'L21',bin:'BIN5',qty:44,alloc:0}],
+ledger:[],
+vendors:[
+ {id:'V1',name:'Kariba Farms',type:'Co-Man / Nuts',contact:'orders@karibafarms.com',terms:'Net 30'},
+ {id:'V2',name:'Sunco & Frenchie',type:'Raw Materials',contact:'sales@suncofrenchie.com',terms:'Net 30'},
+ {id:'V3',name:'Woodland Gourmet',type:'Raw Materials',contact:'po@woodlandgourmet.com',terms:'Net 15'},
+ {id:'V4',name:'Jedwards International',type:'Raw Materials',contact:'orders@jedwards.com',terms:'Net 30'},
+ {id:'V5',name:'Tootsi Impex',type:'Raw Materials',contact:'po@tootsi.com',terms:'Net 30'},
+ {id:'V6',name:'R&R Corrugated Packaging',type:'Packaging',contact:'quotes@rrcorrugated.com',terms:'Net 45'},
+ {id:'V7',name:'Shape Displays',type:'Packaging',contact:'sales@shapedisplays.com',terms:'50% Deposit'},
+ {id:'V8',name:'YesHerb',type:'Raw Materials',contact:'intl@yesherb.com',terms:'Prepaid'},
+ {id:'V9',name:'Webstaurant',type:'Supplies',contact:'—',terms:'Card'}],
+customers:[
+ {id:'C1',name:'Amazon - Ecom',channel:'Amazon',type:'D2C Marketplace',terms:'Marketplace'},
+ {id:'C2',name:'Shopify Store',channel:'Shopify',type:'D2C',terms:'Prepaid'},
+ {id:'C3',name:'TikTok Shop',channel:'TikTok',type:'D2C Marketplace',terms:'Marketplace'},
+ {id:'C4',name:'KeHE Distributors',channel:'EDI',type:'Distributor',terms:'Net 30',edi:true},
+ {id:'C5',name:'C&S Wholesale',channel:'EDI',type:'Distributor',terms:'Net 45',edi:true},
+ {id:'C6',name:'DOT Foods',channel:'EDI',type:'Redistributor',terms:'Net 30',edi:true},
+ {id:'C7',name:'Wine Country Connect',channel:'Direct',type:'Wholesale',terms:'Net 15'},
+ {id:'C8',name:'QVC',channel:'EDI',type:'Retail TV',terms:'Net 60',edi:true},
+ {id:'C9',name:'Woot',channel:'Direct',type:'Deals',terms:'Net 30'},
+ {id:'C10',name:'RepRally',channel:'Direct',type:'Rep Network',terms:'Net 15'}],
+pos:[],receipts:[],rtvs:[],
+orders:[],picklists:[],shipments:[],invoices:[],payments:[],salesReceipts:[],sos:[],
+builds:[],workOrders:[],jobs:[],adjustments:[],transfers:[],
+checklists:[
+ {id:'CL1',name:'Daily Operations Checklist',freq:'Daily',brand:'ALL',items:['Dock doors inspected & clear','Forklift pre-op inspection','Temperature log recorded (dry storage <75°F)','Pest control stations checked','Pick-face replenished for today\'s wave','Sanitize pack stations','Verify scale calibration','Review today\'s open orders board']},
+ {id:'CL2',name:'Cleaning Log (GMP)',freq:'Daily',brand:'ALL',items:['Sweep & mop production floor','Sanitize food-contact surfaces','Clean band sealer & labeler heads','Empty & sanitize waste bins','Restrooms cleaned & stocked']},
+ {id:'CL3',name:'KeHE Compliance — Pre-Ship',freq:'Per Shipment',brand:'B1',items:['Pallet height ≤ 84 inches','UCC-128 (GS1) pallet labels on 2 sides','Lot & best-by visible on master case','ASN (EDI 856) transmitted before pickup','BOL matches PO number']},
+ {id:'CL4',name:'Weekly Equipment Maintenance',freq:'Weekly',brand:'ALL',items:['Grease forklift mast','Test emergency stops on sealer','Inspect conveyor belts','Blow out label printer heads']}],
+taskRuns:{},
+visitors:[],equipment:[
+ {id:'EQ1',name:'Forklift FL-01 (Toyota 8FGU25)',serial:'TY-88231',status:'Active',lastService:daysAgo(12),nextService:daysAgo(-18)},
+ {id:'EQ2',name:'Electric Pallet Jack PJ-02',serial:'CR-11923',status:'Active',lastService:daysAgo(40),nextService:daysAgo(-50)},
+ {id:'EQ3',name:'Dock Leveler #1',serial:'DL-5501',status:'Active',lastService:daysAgo(90),nextService:daysAgo(-90)}],
+machines:[
+ {id:'MC1',name:'Band Sealer BS-200',serial:'BS-99120',status:'Active',lastService:daysAgo(9),nextService:daysAgo(-21)},
+ {id:'MC2',name:'Nitrogen Flush Packer NF-1',serial:'NF-2210',status:'Active',lastService:daysAgo(30),nextService:daysAgo(-1)},
+ {id:'MC3',name:'Label Applicator LA-3',serial:'LA-7743',status:'Down - Awaiting Part',lastService:daysAgo(4),nextService:daysAgo(-26)}],
+recvLogs:[],shipLogs:[],cleanLogs:[],cycleCounts:[],
+groups:[
+ {id:'G1',name:'Warehouse Ops',members:['U2','U3'],lead:'U1'},
+ {id:'G2',name:'Production',members:['U4'],lead:'U1'},
+ {id:'G3',name:'Brand Portal — Earthside',members:['U5'],lead:'U1'}],
+edi:[
+ {id:'E1',partner:'KeHE Distributors',via:'SPS Commerce',docs:['850 PO','855 PO Ack','856 ASN','810 Invoice'],status:'Connected'},
+ {id:'E2',partner:'C&S Wholesale',via:'TrueCommerce',docs:['850 PO','856 ASN','810 Invoice'],status:'Connected'},
+ {id:'E3',partner:'DOT Foods',via:'SPS Commerce',docs:['850 PO','856 ASN','810 Invoice','852 Sales Data'],status:'Connected'},
+ {id:'E4',partner:'QVC',via:'Direct AS2',docs:['850 PO','856 ASN','810 Invoice'],status:'Testing'},
+ {id:'E5',partner:'UNFI',via:'SPS Commerce',docs:['850 PO','856 ASN','810 Invoice'],status:'Pending Setup'}],
+ediDocs:[],
+integrations:{easypost:{connected:true,mode:'Test',carriers:['USPS','UPS','FedEx']},shipstation:{connected:true,store:'earthside-farms',lastSync:nowTs()},channels:[{name:'Amazon Seller Central',status:'Connected',sync:'15 min'},{name:'Shopify',status:'Connected',sync:'Real-time webhook'},{name:'TikTok Shop',status:'Connected',sync:'15 min'},{name:'Veeqo',status:'Connected',sync:'Hourly'}]},
+counters:{cc:2,po:1197,order:462100,inv:9002,ship:3300,pick:501,bld:118,wo:66,job:41,so:10195,adj:12,tr:7,rma:3,rcp:2201,pay:501,sr:301}
+});
+let db;
+function save(){try{localStorage.setItem('pnp-db',JSON.stringify(db))}catch(e){}}
+function load(){try{const raw=localStorage.getItem('pnp-db');if(raw){db=JSON.parse(raw);const s=seed();for(const k in s)if(db[k]===undefined)db[k]=s[k];for(const k in s.counters)if(db.counters[k]===undefined)db.counters[k]=s.counters[k];return}}catch(e){} db=seed();seedTransactions();save()}
+function resetDemo(){localStorage.removeItem('pnp-db');location.reload()}
+const item=id=>db.items.find(i=>i.id===id)||{sku:'?',name:'Unknown'};
+const lot=id=>db.lots.find(l=>l.id===id)||{lot:'—'};
+const bin=id=>db.bins.find(b=>b.id===id)||{code:'—'};
+const wh=id=>db.warehouses.find(w=>w.id===id)||{code:'—'};
+const vend=id=>db.vendors.find(v=>v.id===id)||{name:'—'};
+const cust=id=>db.customers.find(c=>c.id===id)||{name:'—'};
+const userById=id=>db.users.find(u=>u.id===id)||{name:'—'};
+let curUser,curBrand='ALL';
+const isAdmin=()=>curUser.role==='admin';
+const isBrand=()=>curUser.role==='brand';
+function brandFilter(list,key){key=key||'brand';if(curBrand==='ALL')return list;return list.filter(x=>(x[key]||'B1')===curBrand)}
+/* ================= INVENTORY ENGINE ================= */
+function onHand(itemId){return db.inv.filter(r=>r.item===itemId).reduce((s,r)=>s+r.qty,0)}
+function allocated(itemId){return db.inv.filter(r=>r.item===itemId).reduce((s,r)=>s+r.alloc,0)}
+function available(itemId){return onHand(itemId)-allocated(itemId)}
+function invRows(itemId){return db.inv.filter(r=>r.item===itemId&&r.qty>0)}
+function post(type,itemId,lotId,binId,qty,ref,note){db.ledger.unshift({ts:nowTs(),type,item:itemId,lot:lotId,bin:binId,qty,ref:ref||'',note:note||'',user:curUser?curUser.id:'U1'})}
+function addStock(itemId,lotId,binId,qty,type,ref,note){
+  let r=db.inv.find(x=>x.item===itemId&&x.lot===lotId&&x.bin===binId);
+  if(!r){r={item:itemId,lot:lotId,bin:binId,qty:0,alloc:0};db.inv.push(r)}
+  r.qty+=qty; post(type,itemId,lotId,binId,qty,ref,note);
+}
+function removeStock(itemId,lotId,binId,qty,type,ref,note){
+  const r=db.inv.find(x=>x.item===itemId&&x.lot===lotId&&x.bin===binId);
+  if(!r||r.qty<qty)return false;
+  r.qty-=qty; if(r.alloc>r.qty)r.alloc=r.qty; post(type,itemId,lotId,binId,-qty,ref,note); return true;
+}
+// FEFO allocation: earliest best-by first, pick zone preferred
+function allocate(itemId,qty,ref){
+  const rows=invRows(itemId).filter(r=>bin(r.bin).zone!=='QC'&&wh(db.bins.find(b=>b.id===r.bin).wh).type==='internal')
+    .sort((a,b)=>(lot(a.lot).bestBy||'9999')<(lot(b.lot).bestBy||'9999')?-1:1);
+  let need=qty;const allocs=[];
+  for(const r of rows){const free=r.qty-r.alloc;if(free<=0)continue;const take=Math.min(free,need);r.alloc+=take;allocs.push({item:itemId,lot:r.lot,bin:r.bin,qty:take});need-=take;if(!need)break}
+  if(need>0){allocs.forEach(a=>{const r=db.inv.find(x=>x.item===a.item&&x.lot===a.lot&&x.bin===a.bin);r.alloc-=a.qty});return null}
+  post('ALLOCATE',itemId,null,null,qty,ref,'Inventory held for order');
+  return allocs;
+}
+function deallocate(allocs,ref){(allocs||[]).forEach(a=>{const r=db.inv.find(x=>x.item===a.item&&x.lot===a.lot&&x.bin===a.bin);if(r)r.alloc=Math.max(0,r.alloc-a.qty)})}
+
+/* ================= SEED TRANSACTIONS ================= */
+function seedTransactions(){
+  const mk=(o)=>o;
+  // Purchase orders (RM/PM + co-man FG)
+  db.pos=[
+   mk({id:'PO1',no:'PO-1191',vendor:'V5',date:daysAgo(9),status:'Received',type:'RM/PM',eta:daysAgo(2),lines:[{item:'I24',qty:75,price:4.68,rcv:75}],notes:'Desiccated coconut sub w/ molasses powder'}),
+   mk({id:'PO2',no:'PO-1194',vendor:'V6',date:daysAgo(7),status:'Sent',type:'RM/PM',eta:daysAgo(-3),lines:[{item:'I32',qty:3000,price:0.62,rcv:0}],notes:'Master cases — production run #14'}),
+   mk({id:'PO3',no:'PO-1195',vendor:'V8',date:daysAgo(7),status:'Sent',type:'RM/PM',eta:daysAgo(-24),lines:[{item:'I25',qty:110,price:8.43,rcv:0}],notes:'Blueberry powder, ocean freight'}),
+   mk({id:'PO4',no:'PO-1196',vendor:'V2',date:daysAgo(4),status:'Partially Received',type:'RM/PM',eta:daysAgo(-1),lines:[{item:'I21',qty:4250,price:3.65,rcv:2000},{item:'I26',qty:100,price:0.74,rcv:100}],notes:'Cashews W320 + salt'}),
+   mk({id:'PO5',no:'PO-1171',vendor:'V1',date:daysAgo(51),status:'Partially Received',type:'Co-Man FG',eta:daysAgo(-7),lines:[{item:'I1',qty:592,price:21.5,rcv:523},{item:'I3',qty:898,price:19.6,rcv:887},{item:'I2',qty:432,price:16.5,rcv:432}],notes:'Co-man production PO — Kariba run #10'}),
+   mk({id:'PO6',no:'PO-1198',vendor:'V7',date:daysAgo(2),status:'Draft',type:'RM/PM',eta:daysAgo(-14),lines:[{item:'I30',qty:600000,price:0.11,rcv:0}],notes:'Printed pouches — annual buy'})];
+  // Channel orders
+  const A=(i,q)=>({item:i,qty:q});
+  const seedOrder=(no,ch,cust,name,city,st,lines,status,dOffset,extra)=>{
+    const o=Object.assign({id:uid('ORD'),no,channel:ch,cust,shipTo:{name,city,st},lines,status,date:daysAgo(dOffset),brand:'B1',allocs:[],tracking:'',carrier:'',service:'',holdReason:'',priority:ch==='EDI'?'High':['High','Medium','Low'][Math.floor(Math.random()*3)],assignee:['U2','U3',''][Math.floor(Math.random()*3)]},extra||{});
+    db.orders.push(o);return o};
+  seedOrder('111-1870164-8309034','Amazon','C1','Frank Delgado','Seffner','FL',[A('I9',6)],'New',0);
+  seedOrder('#1471','Shopify','C2','Susan Hartley','Mountain Top','PA',[A('I9',6)],'New',0);
+  seedOrder('577347600851571519','TikTok','C3','Kayla R.','Austin','TX',[A('I10',1)],'New',0);
+  seedOrder('113-1138473-4164261','Amazon','C1','Carole M.','Bethany','WV',[A('I9',2),A('I6',1)],'New',0);
+  seedOrder('KEHE-46197655','EDI','C4','KeHE DC 19 Dallas','Dallas','TX',[A('I1',40),A('I3',30)],'Allocated',1,{edi:true,poNo:'46197655'});
+  seedOrder('KEHE-46197656','EDI','C4','KeHE DC 33 Stockton','Stockton','CA',[A('I6',60)],'Allocated',1,{edi:true,poNo:'46197656'});
+  seedOrder('CS-25-0712','EDI','C5','C&S Sacramento','Sacramento','CA',[A('I3',96)],'Picking',1,{edi:true,poNo:'25-0712'});
+  seedOrder('112-5623875-9825055','Amazon','C1','Lynn Okafor','Portland','OR',[A('I9',4)],'Shipped',0,{tracking:'93346109901501782748',carrier:'USPS',service:'Ground Advantage',shipDate:todayISO(),cost:6.26});
+  seedOrder('114-8052829-0631401','Amazon','C1','Rose Piatt','New York','NY',[A('I9',6)],'Shipped',0,{tracking:'1ZK1076C0335123636',carrier:'UPS',service:'UPS® Ground',shipDate:todayISO(),cost:7.74});
+  seedOrder('577347635992301748','TikTok','C3','Devon S.','Miami','FL',[A('I10',1)],'Shipped',1,{tracking:'9405511899223197428490',carrier:'USPS',service:'Ground Advantage',shipDate:daysAgo(1),cost:5.19});
+  seedOrder('WOOT-8841','Direct','C9','Woot Fulfillment DC','Carrollton','TX',[A('I2',120)],'On Hold - Stock',2,{holdReason:'Short 67 cases BTP4x10 — awaiting Build WO-0065'});
+  seedOrder('#1468','Shopify','C2','Priya N.','Fremont','CA',[A('I6',1),A('I8',1)],'Packed',0);
+  // allocate the allocated/picking ones
+  db.orders.filter(o=>['Allocated','Picking','Packed'].includes(o.status)).forEach(o=>{o.allocs=[];o.lines.forEach(l=>{const a=allocate(l.item,l.qty,o.no);if(a)o.allocs.push(...a)})});
+  // Shipments records for shipped orders
+  db.orders.filter(o=>o.status==='Shipped').forEach(o=>{const del=o.shipDate!==todayISO();
+    const evs=[{ts:o.shipDate+'T09:05:00',desc:'Label created — '+o.carrier+' '+(o.service||'')},{ts:o.shipDate+'T14:30:00',desc:'Picked up by '+o.carrier+' — origin scan'}];
+    if(del){evs.push({ts:o.shipDate+'T21:10:00',desc:'In transit — departed regional hub'});evs.push({ts:todayISO()+'T11:40:00',desc:'Delivered — left at front door'})}
+    else evs.push({ts:nowTs(),desc:'In transit — departed regional hub'});
+    db.shipments.push({id:uid('SHP'),order:o.id,no:'SHP-'+(++db.counters.ship),date:o.shipDate,carrier:o.carrier,service:o.service,tracking:o.tracking,cost:o.cost||6.5,status:del?'Delivered':'In Transit',step:del?4:2,events:evs,label:'Active'});
+    db.shipLogs.push({ts:o.shipDate+'T14:0'+Math.floor(Math.random()*9)+':00',order:o.no,carrier:o.carrier,tracking:o.tracking,by:'U2',pallets:0,cartons:1})});
+  // Historic invoices/payments
+  db.invoices.push({id:'INV1',no:'INV-9001',cust:'C7',date:daysAgo(14),due:daysAgo(-1),ref:'SO-10182',status:'Paid',lines:[{desc:'2.8oz Mango Mix — 10 cases',qty:10,price:24}],total:240});
+  db.invoices.push({id:'INV2',no:'INV-9002',cust:'C4',date:daysAgo(6),due:daysAgo(-24),ref:'KEHE-46197601',status:'Unpaid',lines:[{desc:'BBW4x10 — 40 cases',qty:40,price:38.5}],total:1540});
+  db.payments.push({id:'PAY1',no:'PMT-500',cust:'C7',date:daysAgo(10),method:'ACH',amount:240,applied:'INV-9001'});
+  // Sales orders (wholesale)
+  db.sos.push({id:'SO1',no:'SO-10182',cust:'C7',date:daysAgo(14),status:'Closed',lines:[A('I7',2),A('I6',2),A('I8',2)],notes:'Wine Country sample-to-stock'});
+  db.sos.push({id:'SO2',no:'SO-10191',cust:'C7',date:daysAgo(3),status:'Open',lines:[A('I3',2),A('I1',2)],notes:''});
+  // Builds & work orders
+  db.workOrders.push({id:'WO1',no:'WO-0064',item:'I1',qty:60,status:'Done',due:daysAgo(5),run:'Run #13'});
+  db.workOrders.push({id:'WO2',no:'WO-0065',item:'I2',qty:120,status:'Released',due:daysAgo(-4),run:'Run #14'});
+  db.workOrders.push({id:'WO3',no:'WO-0066',item:'I10',qty:50,status:'Planned',due:daysAgo(-7),run:'Kitting'});
+  db.builds.push({id:'BLD1',no:'BLD-0117',wo:'WO-0064',item:'I1',qty:60,lotOut:'25188',date:daysAgo(5),by:'U4',status:'Complete',components:[{item:'I20',lot:'RM-7781',qty:156},{item:'I23',lot:'RM-7755',qty:12},{item:'I24',lot:'RM-7791',qty:7.2},{item:'I26',lot:'RM-7700',qty:3},{item:'I30',lot:'PM-2210',qty:600},{item:'I33',lot:'PM-2100',qty:600},{item:'I32',lot:'PM-2188',qty:60}]});
+  // Job tracker submissions
+  db.jobs.push({id:'JOB1',no:'JT-0040',by:'U4',date:daysAgo(1),item:'I2',qty:38,lot:'25190',shift:'AM',machine:'MC1',notes:'Sealer jam 20min, otherwise clean run',status:'Pending Approval'});
+  db.jobs.push({id:'JOB2',no:'JT-0039',by:'U4',date:daysAgo(5),item:'I1',qty:60,lot:'25188',shift:'AM',machine:'MC2',notes:'Full run for WO-0064',status:'Approved',approvedBy:'U1',approvedAt:daysAgo(5)});
+  // Receiving logs
+  db.recvLogs.push({ts:daysAgo(2)+'T09:12:00',ref:'PO-1191',vendor:'Tootsi Impex',items:'Molasses powder 75 lb',by:'U3',temp:'71°F',condition:'Good',coa:'Yes'});
+  db.recvLogs.push({ts:daysAgo(1)+'T13:40:00',ref:'PO-1196',vendor:'Sunco & Frenchie',items:'Cashew W320 2,000 lb (partial)',by:'U2',temp:'70°F',condition:'Good',coa:'Yes'});
+  // Cleaning logs
+  db.cleanLogs.push({ts:daysAgo(1)+'T17:05:00',area:'Production floor + sealer',by:'U4',chems:'Quat sanitizer 200ppm',verified:'U1'});
+  // Task history (past 4 days)
+  for(let d=4;d>=1;d--){const date=daysAgo(d);db.taskRuns[date]={};
+    ['CL1','CL2'].forEach(cid=>{const cl=db.checklists.find(c=>c.id===cid);
+      db.taskRuns[date][cid]=cl.items.map((t,i)=>({done:d>1||i<6,by:d%2?'U2':'U3',at:date+'T0'+(8+i%2)+':1'+i+':00'}))});
+  }
+  // Visitors
+  db.visitors.push({ts:daysAgo(1)+'T10:30:00',out:daysAgo(1)+'T11:45:00',name:'Mark Feldman',company:'KeHE QA Audit',host:'Rafi K.',purpose:'GMP audit',badge:'V-102'});
+  // EDI docs
+  db.ediDocs.push({ts:daysAgo(1)+'T06:01:00',partner:'KeHE Distributors',doc:'850 PO',ref:'46197655',dir:'IN',status:'Accepted → Order created'});
+  db.ediDocs.push({ts:daysAgo(1)+'T06:01:20',partner:'KeHE Distributors',doc:'855 Ack',ref:'46197655',dir:'OUT',status:'Sent'});
+  db.ediDocs.push({ts:daysAgo(1)+'T06:02:00',partner:'C&S Wholesale',doc:'850 PO',ref:'25-0712',dir:'IN',status:'Accepted → Order created'});
+  db.ediDocs.push({ts:daysAgo(2)+'T15:11:00',partner:'DOT Foods',doc:'852 Sales Data',ref:'WK-27',dir:'IN',status:'Processed → Forecast updated'});
+  // Cycle counts
+  db.cycleCounts.push({id:'CC1',no:'CC-001',bin:'BIN4',status:'Completed',date:daysAgo(2),by:'U3',posted:true,lines:[{item:'I5',lot:'L20',sys:32,counted:31},{item:'I6',lot:'L5',sys:210,counted:210}]});
+  db.cycleCounts.push({id:'CC2',no:'CC-002',bin:'BIN2',status:'Pending',date:'',by:'',posted:false,lines:[]});
+}
+/* ================= UI HELPERS ================= */
+let modalSave=null;
+function openModal(title,body,opts){opts=opts||{};$('#modal').className=opts.wide?'wide':'';$('#modal-t').textContent=title;$('#modal-b').innerHTML=body;
+  $('#modal-f').innerHTML=opts.footer!==undefined?opts.footer:((opts.saveLabel===null?'':'<button class="btn p" onclick="modalSave&&modalSave()">'+(opts.saveLabel||'Save')+'</button>')+'<button class="btn" onclick="closeModal()">Close</button>');
+  modalSave=opts.onSave||null;$('#modal-bg').classList.add('open')}
+function closeModal(){$('#modal-bg').classList.remove('open');modalSave=null}
+function table(cols,rows,empty){
+  if(!rows.length)return '<div class="empty">'+(empty||'Nothing here yet.')+'</div>';
+  return '<div style="overflow-x:auto"><table><thead><tr>'+cols.map(c=>'<th'+(c.num?' class="num"':'')+'>'+c.h+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr'+(r._click?' class="clickable" onclick="'+r._click+'"':'')+'>'+cols.map(c=>'<td'+(c.num?' class="num"':'')+'>'+(r[c.k]??'')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'}
+function selOpts(list,val,lbl,selected){return list.map(x=>'<option value="'+x[val]+'"'+(x[val]===selected?' selected':'')+'>'+esc(typeof lbl==='function'?lbl(x):x[lbl])+'</option>').join('')}
+function itemSel(id,types,selected){const list=db.items.filter(i=>!types||types.includes(i.type));return '<select id="'+id+'">'+selOpts(list,'id',i=>i.sku+' — '+i.name,selected)+'</select>'}
+function pageHead(t,desc,actions){return '<div class="page-head"><h1>'+t+'</h1><div class="spacer"></div>'+(actions||'')+(desc?'<div class="desc">'+desc+'</div>':'')+'</div>'}
+
+
+/* ---- shared UI helpers (design system v2) ---- */
+const prio=o=>o.priority||(o.edi?'High':'Medium');
+const prioBadge=p=>badge(p,{High:'red',Medium:'amber',Low:'green'}[p]||'gray');
+function kpiIco(v,l,ico,color,extra,onclick,sel){return '<div class="kpi'+(onclick?' click':'')+(sel?' sel':'')+'"'+(onclick?' onclick="'+onclick+'"':'')+'><div class="ico" style="background:'+color+'22;color:'+color+'">'+ico+'</div><div><div class="v">'+v+'</div><div class="l">'+l+(extra?' · '+extra:'')+'</div></div></div>'}
+function donut(segs,total,label){
+  let acc=0;const tot=Math.max(1,total);
+  const stops=segs.filter(s=>s.v>0).map(s=>{const a=acc/tot*360;acc+=s.v;return s.c+' '+a+'deg '+(acc/tot*360)+'deg'}).join(',');
+  return '<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div class="donut" style="background:conic-gradient('+(stops||'#e3e8ee 0deg 360deg')+')"><div class="c"><b style="font-size:19px">'+total+'</b><span class="sub">'+label+'</span></div></div><div style="min-width:150px">'+
+  segs.map(s=>'<div style="display:flex;align-items:center;gap:7px;font-size:12px;margin:3.5px 0"><span style="width:10px;height:10px;border-radius:3px;background:'+s.c+';flex-shrink:0"></span>'+s.l+'<b style="margin-left:auto;padding-left:14px">'+s.v+'</b></div>').join('')+'</div></div>'}
+function fulfillPct(o){
+  if(o.status==='Shipped')return 100;
+  if(o.status==='Picking'){const pl=db.picklists.find(p=>p.orders.includes(o.id));
+    if(pl){const mine=pl.lines.filter(l=>l.orderId===o.id);const d=mine.filter(l=>l.picked).length;return 15+Math.round(45*d/Math.max(1,mine.length))}return 30}
+  return {'New':0,'On Hold - Stock':0,'Allocated':15,'Picked':60,'Packed':80,'Cancelled':0}[o.status]??0}
+function fulfillActionBtn(o){
+  const m={'New':['Allocate','p'],'On Hold - Stock':['Review',''],'Allocated':['Start Picking','p'],'Picking':['Continue Picking','p'],'Picked':['Start Packing','p'],'Packed':['Ship / Label','p'],'Shipped':['View Details','']};
+  const a=m[o.status]||['View Details',''];
+  return '<button class="btn sm '+a[1]+'" onclick="event.stopPropagation();openOrder(\''+o.id+'\')">'+a[0]+'</button>'}
+function holdOrder(id){const o=db.orders.find(x=>x.id===id);deallocate(o.allocs,o.no);o.allocs=[];o.status='On Hold - Stock';o.holdReason='Manual hold by '+curUser.name;toast(o.no+' placed on hold');refresh()}
+function copyTrack(t){try{navigator.clipboard.writeText(t)}catch(e){}toast('Tracking number copied: '+t)}
+function stepper(steps,cur){ // steps:[{t,s2}], cur index; done < cur
+  return '<div class="stepper">'+steps.map((s,i)=>'<div class="st'+(i<cur?' done':i===cur?' cur':'')+'"><div class="n">'+(i<cur?'✓':i+1)+'</div><div class="lab"><b>'+s.t+'</b><span>'+s.s2+'</span></div></div>'+(i<steps.length-1?'<div class="sbar"></div>':'')).join('')+'</div>'}
+
+/* ================= NAV & ROUTER ================= */
+const NAV=[
+ {g:'Overview'},
+ {id:'dashboard',t:'Dashboard',ic:'▦'},
+ {id:'orders',t:'Order Management',ic:'🛒',badge:()=>db.orders.filter(o=>['New','On Hold - Stock'].includes(o.status)).length},
+ {g:'Purchasing'},
+ {id:'vendors',t:'Vendors',ic:'🏭'},
+ {id:'pos',t:'Purchase Orders',ic:'📄'},
+ {id:'receipt',t:'Item Receipt',ic:'📥'},
+ {id:'rtv',t:'Return to Vendors',ic:'↩'},
+ {id:'reorder',t:'Re-Order',ic:'🔁',badge:()=>reorderList().length},
+ {g:'Manufacturing'},
+ {id:'builds',t:'Builds',ic:'🔧'},
+ {id:'workorders',t:'Work Orders',ic:'🗂'},
+ {id:'jobs',t:'Job Trackers',ic:'⏱',badge:()=>db.jobs.filter(j=>j.status==='Pending Approval').length},
+ {g:'Inventory'},
+ {id:'items',t:'Item Library',ic:'📦'},
+ {id:'lots',t:'Lots / Barcode Search',ic:'𝄃𝄃'},
+ {id:'adjust',t:'Adjustments',ic:'±'},
+ {id:'cyclecount',t:'Cycle Count',ic:'🔄'},
+ {id:'transfers',t:'Transfers',ic:'⇄'},
+ {id:'labels',t:'Generate Labels',ic:'🏷'},
+ {g:'Sales'},
+ {id:'customers',t:'Customers',ic:'👥'},
+ {id:'sos',t:'Sales Orders',ic:'🧾'},
+ {id:'invoices',t:'Invoices',ic:'💵'},
+ {id:'receipts',t:'Sales Receipts',ic:'🧾'},
+ {id:'payments',t:'Payments',ic:'💳'},
+ {g:'Fulfillment'},
+ {id:'fulfillment',t:'Fulfillment Queue',ic:'🧰'},
+ {id:'picklist',t:'Picklists',ic:'📋'},
+ {id:'packship',t:'Pack & Ship Station',ic:'📤'},
+ {id:'kitting',t:'Kitting',ic:'🎁'},
+ {id:'shipments',t:'Shipments',ic:'🚚'},
+ {id:'portal',t:'Customer Portal',ic:'👁'},
+ {g:'Compliance & Ops'},
+ {id:'tasks',t:'Daily Ops Checklist',ic:'✅'},
+ {id:'chkbuilder',t:'Checklist Builder',ic:'🛠',admin:true},
+ {id:'visitors',t:'Visitor Sign-in',ic:'🪪'},
+ {id:'equipment',t:'Equipments',ic:'🚜'},
+ {id:'machines',t:'Machineries',ic:'⚙'},
+ {id:'recvlogs',t:'Receiving Logs',ic:'📑'},
+ {id:'shiplogs',t:'Shipment Logs',ic:'📑'},
+ {id:'cleanlogs',t:'Cleaning Logs',ic:'🧽'},
+ {g:'Team'},
+ {id:'groups',t:'Groups',ic:'👪',admin:true},
+ {id:'members',t:'Add Members',ic:'➕',admin:true},
+ {g:'Integrations'},
+ {id:'edi',t:'EDI Connections',ic:'🔗'},
+ {id:'shipapis',t:'EasyPost / ShipStation',ic:'🔌'},
+ {id:'channels',t:'Sales Channels',ic:'🌐'},
+ {g:'System'},
+ {id:'flows',t:'Process Flows',ic:'🗺'},
+ {id:'arch',t:'Architecture',ic:'🏛'},
+];
+const EMPLOYEE_PAGES=['dashboard','orders','orderdetail','portal','fulfillment','cyclecount','adjust','receipt','picklist','packship','kitting','shipments','tasks','visitors','recvlogs','shiplogs','cleanlogs','jobs','builds','labels','lots','equipment','machines','flows'];
+const BRAND_PAGES=['dashboard','orders','orderdetail','portal','pos','items','lots','sos','invoices','payments','shipments','tasks','edi','channels','flows','arch','reorder','customers'];
+function visibleNav(){return NAV.filter(n=>{if(n.g)return true;if(curUser.role==='admin')return true;if(curUser.role==='employee')return EMPLOYEE_PAGES.includes(n.id);return BRAND_PAGES.includes(n.id)})}
+function renderNav(){
+  const cur=location.hash.replace('#/','')||'dashboard';
+  $('#nav').innerHTML=visibleNav().map(n=>{
+    if(n.g)return '<div class="nav-group">'+n.g+'</div>';
+    const b=n.badge?n.badge():0;
+    return '<div class="nav-item'+(n.id===cur?' active':'')+'" onclick="go(\''+n.id+'\')"><span class="ic">'+n.ic+'</span>'+n.t+(b?'<span class="nav-badge">'+b+'</span>':'')+'</div>'}).join('')}
+function go(p){location.hash='#/'+p}
+window.addEventListener('hashchange',route);
+function route(){
+  const p=location.hash.replace('#/','')||'dashboard';
+  const nav=NAV.find(n=>n.id===p);
+  $('#crumb').textContent=nav?nav.t:(p==='orderdetail'?'Order Detail':'PicknPack');
+  renderNav();
+  const fn=PAGES[p]||PAGES.dashboard;
+  $('#content').innerHTML=fn();
+  save();
+}
+function refresh(){route()}
+function setUser(id){curUser=db.users.find(u=>u.id===id);if(curUser.role==='brand'){curBrand='B1';$('#brandsel').value='B1'}route();toast('Now viewing as '+curUser.name)}
+function setBrand(b){curBrand=b;route()}
+
+/* ================= GLOBAL SCAN ================= */
+function globalScan(inp){
+  const code=inp.value.trim();if(!code)return;inp.value='';
+  const it=db.items.find(i=>i.sku.toLowerCase()===code.toLowerCase()||i.upc===code);
+  if(it){go('lots');setTimeout(()=>{const f=$('#lotsearch');if(f){f.value=it.sku;lotSearchRun()}},50);return}
+  const lo=db.lots.find(l=>('LOT-'+l.lot).toLowerCase()===code.toLowerCase()||l.lot.toLowerCase()===code.toLowerCase());
+  if(lo){go('lots');setTimeout(()=>{const f=$('#lotsearch');if(f){f.value=lo.lot;lotSearchRun()}},50);return}
+  const b=db.bins.find(x=>x.code.toLowerCase()===code.toLowerCase()||('LOC-'+x.code).toLowerCase()===code.toLowerCase());
+  if(b){go('lots');setTimeout(()=>{const f=$('#lotsearch');if(f){f.value=b.code;lotSearchRun()}},50);return}
+  const o=db.orders.find(x=>x.no.toLowerCase()===code.toLowerCase()||(x.tracking||'')===code);
+  if(o){openOrder(o.id);return}
+  toast('No match for "'+code+'"','err');
+}
+/* ================= PAGES ================= */
+const PAGES={};
+
+/* ---- Dashboard ---- */
+PAGES.dashboard=function(){
+  const today=todayISO();
+  const shippedToday=db.orders.filter(o=>o.status==='Shipped'&&o.shipDate===today).length;
+  const pickToday=db.orders.filter(o=>['Allocated','Picking'].includes(o.status)).length;
+  const packToday=db.orders.filter(o=>['Picked','Packed'].includes(o.status)).length;
+  const rcvToday=db.pos.filter(p=>['Sent','Partially Received'].includes(p.status)).length;
+  const low=reorderList().length;
+  const pendJobs=db.jobs.filter(j=>j.status==='Pending Approval').length;
+  const stat=(s)=>db.orders.filter(o=>Array.isArray(s)?s.includes(o.status):o.status===s).length;
+  const openOrd=db.orders.filter(o=>!['Shipped','Cancelled'].includes(o.status)).length+stat('Shipped');
+  const shipSegs=[{l:'Label created',v:db.shipments.filter(s=>s.status==='Label Created').length,c:'#68778a'},{l:'In transit',v:db.shipments.filter(s=>s.status==='In Transit').length,c:'#1d4ed8'},{l:'Delivered',v:db.shipments.filter(s=>s.status==='Delivered').length,c:'#15803d'},{l:'Exception',v:db.shipments.filter(s=>s.status==='Exception').length,c:'#b91c1c'}];
+  return pageHead('Dashboard','Live overview — '+dstr(today)+' · viewing '+esc(db.brands.find(b=>b.id===curBrand).name))+
+  '<div class="kpis">'+
+  kpiIco(rcvToday,'Receiving today','📥','#1d4ed8','POs','go(\'receipt\')')+
+  kpiIco(pickToday,'Picking today','🛒','#b45309','orders','go(\'fulfillment\')')+
+  kpiIco(packToday,'Packing today','📦','#7e22ce','orders','go(\'fulfillment\')')+
+  kpiIco(shippedToday,'Shipping today','🚚','#0d7a5f','shipments','go(\'shipments\')')+
+  kpiIco(low,'Low stock items','⚠','#b91c1c','SKUs','go(\'reorder\')')+
+  '</div>'+
+  '<div class="grid3">'+
+  '<div class="card"><div class="card-h">📋 Tasks overview</div><div class="card-b" style="padding:8px 16px">'+
+    [['Receipts to putaway',rcvToday,'receipt'],['Orders to pick',stat(['Allocated','Picking']),'fulfillment'],['Orders to pack',stat('Picked'),'fulfillment'],['Orders to ship',stat('Packed'),'fulfillment'],['Job approvals',pendJobs,'jobs'],['Cycle counts pending',db.cycleCounts.filter(c=>c.status!=='Completed').length,'cyclecount'],['Stock holds',stat('On Hold - Stock'),'orders']].map(t=>
+     '<div style="display:flex;align-items:center;padding:7px 0;border-bottom:1px solid #eef1f4;font-size:13px;cursor:pointer" onclick="go(\''+t[2]+'\')">'+t[0]+'<span class="b '+(t[1]?'blue':'gray')+'" style="margin-left:auto">'+t[1]+'</span></div>').join('')+
+  '</div></div>'+
+  '<div class="card"><div class="card-h">🛒 Order status</div><div class="card-b">'+
+    donut([{l:'Pending',v:stat('New'),c:'#1d4ed8'},{l:'Picking',v:stat(['Allocated','Picking']),c:'#b45309'},{l:'Packing',v:stat(['Picked','Packed']),c:'#7e22ce'},{l:'Shipped',v:stat('Shipped'),c:'#15803d'},{l:'On hold',v:stat('On Hold - Stock'),c:'#b91c1c'}],openOrd+stat('On Hold - Stock')+stat('New'),'orders')+
+  '</div></div>'+
+  '<div class="card"><div class="card-h">🚚 Shipments overview</div><div class="card-b">'+
+    donut(shipSegs,db.shipments.length,'shipments')+
+  '</div></div></div>'+
+  '<div class="grid2">'+
+  '<div class="card"><div class="card-h">Recent orders <span class="linklike" style="margin-left:auto;font-size:11.5px" onclick="go(\'orders\')">View all →</span></div><div class="card-b" style="padding:0">'+
+   table([{h:'Order #',k:'n'},{h:'Customer',k:'c'},{h:'Status',k:'s'},{h:'Date',k:'d'},{h:'Items',k:'i',num:true}],
+    db.orders.slice(0,6).map(o=>({_click:'openOrder(\''+o.id+'\')',n:'<b>'+esc(o.no)+'</b>',c:esc(o.shipTo.name),s:sbadge(o.status),d:dstr(o.date),i:o.lines.reduce((s,l)=>s+l.qty,0)})))+'</div></div>'+
+  '<div class="card"><div class="card-h">Recent receipts <span class="linklike" style="margin-left:auto;font-size:11.5px" onclick="go(\'recvlogs\')">View all →</span></div><div class="card-b" style="padding:0">'+
+   table([{h:'Ref',k:'r'},{h:'Vendor',k:'v'},{h:'Items',k:'i'},{h:'Received',k:'d'},{h:'By',k:'u'}],
+    db.recvLogs.slice(0,6).map(l=>({r:'<b>'+esc(l.ref)+'</b>',v:esc(l.vendor),i:'<span class="sub">'+esc(l.items)+'</span>',d:tstr(l.ts),u:esc(userById(l.by).name.split(' (')[0])})),'No receipts yet')+'</div></div>'+
+  '</div>'+
+  (pendJobs&&isAdmin()?'<div class="notice">⏱ '+pendJobs+' job tracker submission'+(pendJobs>1?'s':'')+' waiting for your approval — <span class="linklike" onclick="go(\'jobs\')">review now</span></div>':'');
+};
+
+/* ---- Order Management ---- */
+let ordFilter={ch:'',st:'',q:''};let selOrdId=null;
+const ORD_BUCKETS={'Pending':['New'],'In Fulfillment':['Allocated','Picking','Picked','Packed'],'Shipped':['Shipped'],'On Hold':['On Hold - Stock'],'Cancelled':['Cancelled']};
+PAGES.orders=function(){
+  const today=todayISO();
+  let list=brandFilter(db.orders);
+  if(ordFilter.ch)list=list.filter(o=>o.channel===ordFilter.ch);
+  if(ordFilter.st)list=list.filter(o=>ORD_BUCKETS[ordFilter.st].includes(o.status));
+  if(ordFilter.q){const q=ordFilter.q.toLowerCase();list=list.filter(o=>o.no.toLowerCase().includes(q)||o.shipTo.name.toLowerCase().includes(q)||o.lines.some(l=>item(l.item).sku.toLowerCase().includes(q)))}
+  const sel=list.find(o=>o.id===selOrdId)||list[0];
+  const chans=[...new Set(db.orders.map(o=>o.channel))];
+  const cnt=b=>brandFilter(db.orders).filter(o=>ORD_BUCKETS[b].includes(o.status)).length;
+  const colors={'Pending':'#1d4ed8','In Fulfillment':'#b45309','Shipped':'#15803d','On Hold':'#b91c1c','Cancelled':'#68778a'};
+  return pageHead('Order Management','Orders from Amazon, TikTok Shop, Shopify and EDI retailers auto-hold inventory (FEFO). '+db.orders.filter(o=>o.date===today&&o.status!=='Shipped').length+' pending from today · '+db.orders.filter(o=>o.status==='Shipped'&&o.shipDate===today).length+' shipped today.',
+   (isBrand()?'':'<button class="btn" onclick="simulateChannelOrder()">⇣ Simulate channel order</button><button class="btn" onclick="simulateEdiPo()">⇣ Simulate EDI 850</button>')+'<button class="btn p" onclick="newManualOrder()">+ Manual order</button>')+
+  '<div class="kpis">'+Object.keys(ORD_BUCKETS).map(b=>kpiIco(cnt(b),b,{Pending:'⏳','In Fulfillment':'🧰',Shipped:'🚚','On Hold':'⏸',Cancelled:'✕'}[b],colors[b],'',"ordFilter.st=ordFilter.st==='"+b+"'?'':'"+b+"';refresh()",ordFilter.st===b)).join('')+'</div>'+
+  '<div class="filters"><input type="text" placeholder="Search order #, customer, SKU…" value="'+esc(ordFilter.q)+'" onkeydown="if(event.key===\'Enter\'){ordFilter.q=this.value;refresh()}">'+
+  '<select onchange="ordFilter.ch=this.value;refresh()"><option value="">All channels</option>'+chans.map(c=>'<option '+(ordFilter.ch===c?'selected':'')+'>'+c+'</option>').join('')+'</select>'+
+  (ordFilter.st||ordFilter.q||ordFilter.ch?'<button class="btn sm" onclick="ordFilter={ch:\'\',st:\'\',q:\'\'};refresh()">✕ Clear filters</button>':'')+'</div>'+
+  '<div class="layout"><div>'+
+   (list.length?list.map(o=>'<div class="ocard'+(sel&&o.id===sel.id?' sel':'')+'" onclick="selOrdId=\''+o.id+'\';refresh()">'+
+    '<div class="r1">'+esc(o.no)+'<span style="margin-left:auto">'+sbadge(o.status)+'</span></div>'+
+    '<div class="r2">'+badge(o.channel,{Amazon:'amber',Shopify:'green',TikTok:'purple',EDI:'blue',Direct:'gray'}[o.channel]||'gray')+' '+esc(o.shipTo.name)+'<span style="margin-left:auto">'+o.lines.reduce((s,l)=>s+l.qty,0)+' items · '+dstr(o.date)+'</span></div></div>').join(''):'<div class="empty card" style="padding:24px">No orders match.</div>')+
+  '</div><div>'+(sel?orderSidePanel(sel):'')+'</div></div>';
+};
+function orderSidePanel(o){
+  const shp=shipmentOf(o);
+  const val=o.lines.reduce((s,l)=>s+l.qty*(item(l.item).price||0),0);
+  const steps=[['Order created',o.date],['Allocated',null],['Picked',null],['Packed',null],['Shipped',o.shipDate],['Delivered',o.deliveredDate]];
+  const idx={'New':0,'On Hold - Stock':0,'Allocated':1,'Picking':1,'Picked':2,'Packed':3,'Shipped':4,'Cancelled':0}[o.status]??0;
+  const cur=o.status==='Shipped'&&shp&&shp.status==='Delivered'?5:idx;
+  return '<div class="card"><div class="card-h">Order '+esc(o.no)+'<div class="spacer"></div>'+sbadge(o.status)+'</div><div class="card-b">'+
+  (o.holdReason?'<div class="notice">⚠ '+esc(o.holdReason)+'</div>':'')+
+  '<div class="frow"><div class="fld"><label>Customer</label>'+esc(cust(o.cust).name)+'</div><div class="fld"><label>Channel</label>'+esc(o.channel)+(o.edi?' <span class="tag">PO '+esc(o.poNo||'')+'</span>':'')+'</div></div>'+
+  '<div class="frow"><div class="fld"><label>Ship to</label>'+esc(o.shipTo.name)+'<div class="sub">'+esc(o.shipTo.city)+', '+esc(o.shipTo.st)+'</div></div><div class="fld"><label>Priority</label>'+prioBadge(prio(o))+'</div></div>'+
+  table([{h:'SKU',k:'s'},{h:'Qty',k:'q',num:true},{h:'Avail',k:'a',num:true},{h:'Total',k:'t',num:true}],o.lines.map(l=>({s:item(l.item).sku,q:l.qty,a:available(l.item),t:fmt$(l.qty*(item(l.item).price||0))})))+
+  '<p style="text-align:right;font-weight:700;margin-top:8px">Order total '+fmt$(val)+'</p>'+
+  (shp?'<p class="sub" style="margin-top:6px">'+shp.carrier+' <span class="mono">'+esc(shp.tracking)+'</span> '+sbadge(shp.status)+'</p>':'')+
+  '</div></div>'+
+  '<div class="card"><div class="card-h">Order timeline</div><div class="card-b"><ul class="vt">'+
+   steps.map((s,i)=>'<li class="'+(i<=cur?'on':'')+'">'+s[0]+(s[1]&&i<=cur?'<span class="when">'+dstr(s[1])+'</span>':'')+'</li>').join('')+'</ul></div></div>'+
+  '<div class="card"><div class="card-h">Quick actions</div><div class="card-b">'+
+   (isBrand()?'<button class="btn qact" onclick="portalView(\''+o.id+'\')">👁 Track order</button>':
+   '<button class="btn p qact" onclick="openOrder(\''+o.id+'\')">'+(o.status==='New'?'▶ Start fulfillment':'▶ Open fulfillment station')+'</button>'+
+   (!['Shipped','Cancelled','On Hold - Stock'].includes(o.status)?'<button class="btn qact" onclick="holdOrder(\''+o.id+'\')">⏸ Put on hold</button>':'')+
+   (o.status==='On Hold - Stock'?'<button class="btn qact" onclick="allocOrder(\''+o.id+'\')">↻ Retry allocation</button>':'')+
+   '<button class="btn qact" onclick="toast(\'Packing slip sent to printer 🖨\')">🖨 Print packing slip</button>'+
+   '<button class="btn qact" onclick="portalView(\''+o.id+'\')">👁 Customer portal view</button>'+
+   (!['Shipped','Cancelled'].includes(o.status)?'<button class="btn danger qact" onclick="cancelOrder(\''+o.id+'\')">✕ Cancel order</button>':''))+
+  '</div></div>';
+}
+let curOrderId=null;
+function openOrder(id){curOrderId=id;go('orderdetail')}
+function shipmentOf(o){return db.shipments.find(s=>s.order===o.id&&s.label!=='Voided')}
+function orderTimeline(o){
+  const steps=['Received','Allocated','Picked','Packed','Shipped','Delivered'];
+  const map={'New':0,'On Hold - Stock':0,'Allocated':1,'Picking':1,'Picked':2,'Packed':3,'Shipped':4};
+  let cur=map[o.status]??0;
+  const shp=shipmentOf(o);
+  if(o.status==='Shipped'&&shp&&shp.status==='Delivered')cur=5;
+  if(o.status==='Cancelled')return '<div class="notice">Order cancelled.</div>';
+  return '<div class="flow">'+steps.map((s,i)=>'<div class="step'+(i<=cur?' hl':'')+'">'+(i<cur?'✓ ':i===cur?'● ':'')+s+
+   (i===1&&o.status==='Picking'?'<span class="s2">picking now…</span>':'')+
+   (i===4&&shp&&i===cur?'<span class="s2">'+shp.carrier+' '+shp.status.toLowerCase()+'</span>':'')+
+   '</div>'+(i<5?'<span class="arr">→</span>':'')).join('')+'</div>';
+}
+function trackPanel(o,readonly){
+  const shp=shipmentOf(o);
+  if(!shp)return '';
+  const evs=(shp.events||[]).slice().reverse();
+  return '<div class="card"><div class="card-h">📡 Carrier tracking — '+shp.carrier+' '+esc(shp.service||'')+' '+sbadge(shp.status)+
+  '<div class="spacer"></div><span class="mono">'+esc(shp.tracking)+'</span>'+(readonly?'':' <button class="btn sm" onclick="advanceTracking()">↻ Poll carrier</button>')+'</div><div class="card-b" style="padding:0">'+
+  table([{h:'Time',k:'t'},{h:'Tracking event',k:'e'}],evs.map((e,ix)=>({t:tstr(e.ts),e:(ix===0?'<b>'+esc(e.desc)+'</b>':esc(e.desc))})),'No scans yet — poll carrier.')+
+  '</div></div>';
+}
+PAGES.orderdetail=function(){
+  const o=db.orders.find(x=>x.id===curOrderId);
+  if(!o)return PAGES.orders();
+  const pl=db.picklists.find(p=>p.orders.includes(o.id)&&p.status!=='Done');
+  const shp=shipmentOf(o);
+  const stepIdx=o.status==='Shipped'?(shp&&shp.status==='Delivered'?4:3.5):{'New':0,'On Hold - Stock':0,'Allocated':0,'Picking':0,'Picked':1,'Packed':2}[o.status]??0;
+  const units=o.lines.reduce((s,l)=>s+l.qty,0);
+  const pickedUnits=o.status==='Picking'&&pl?pl.lines.filter(l=>l.orderId===o.id&&l.picked).reduce((s,l)=>s+l.qty,0):(stepIdx>=1?units:0);
+  let stage='';
+  if(!isBrand()){
+    if(o.status==='New'||o.status==='On Hold - Stock')
+      stage='<div class="card"><div class="card-h">Step 1 — Allocate inventory</div><div class="card-b">'+(o.holdReason?'<div class="notice">⚠ '+esc(o.holdReason)+'</div>':'')+
+      '<button class="btn p" onclick="allocOrder(\''+o.id+'\')">Hold inventory (FEFO)</button></div></div>';
+    if(o.status==='Allocated')
+      stage='<div class="card"><div class="card-h">Step 1 — Pick items</div><div class="card-b"><button class="btn p" onclick="makePicklist(\''+o.id+'\')">▶ Start picking</button> <span class="sub">creates a picklist — scan bin ▸ item ▸ qty</span></div></div>';
+    if(o.status==='Picking'&&pl){
+      const lines=pl.lines.map((l,ix)=>({l,ix})).filter(x=>x.l.orderId===o.id);
+      const cur=lines.find(x=>!x.l.picked);
+      stage=(cur?'<div class="grid2"><div class="card"><div class="card-h">Current pick</div><div class="card-b">'+
+       '<div style="display:flex;gap:14px;align-items:center;margin-bottom:10px"><div><div class="sub">Location</div><div class="bigloc">'+bin(cur.l.bin).code+'</div><div class="sub">'+bin(cur.l.bin).zone+' zone</div></div>'+
+       '<div style="margin-left:auto;text-align:right"><b>'+item(cur.l.item).sku+'</b><div class="sub">'+esc(item(cur.l.item).name)+'</div><div class="sub">Lot <span class="mono">'+lot(cur.l.lot).lot+'</span> · '+cur.l.qty+' '+item(cur.l.item).uom+'</div></div></div>'+
+       '<div class="scanbox"><div class="fld"><label>1 · Scan location</label><input id="il-bin" type="text" placeholder="LOC-'+bin(cur.l.bin).code+'" onkeydown="if(event.key===\'Enter\'){inlineLocCheck(\''+pl.id+'\','+cur.ix+',this)}"><div id="il-loc-ok" style="margin-top:5px"></div>'+
+       '<div class="fld" style="margin-top:8px"><label>2 · Scan product / lot</label><input id="il-item" type="text" placeholder="'+item(cur.l.item).sku+' or LOT-'+lot(cur.l.lot).lot+'"></div>'+
+       '<div class="fld" style="margin-top:8px;max-width:120px"><label>Qty</label><input id="il-q" type="number" value="'+cur.l.qty+'"></div>'+
+       '<button class="btn p" style="margin-top:10px" onclick="inlinePick(\''+pl.id+'\','+cur.ix+')">✓ Confirm picked</button></div>'+
+       '</div></div><div>':'<div>')+
+      '<div class="card"><div class="card-h">Items to pick ('+pl.no+')</div><div class="card-b" style="padding:0">'+
+      table([{h:'#',k:'i'},{h:'Product',k:'p'},{h:'Location',k:'b'},{h:'Lot',k:'lo'},{h:'Qty',k:'q',num:true},{h:'Status',k:'st'},{h:'',k:'a'}],
+       lines.map((x,i2)=>({i:i2+1,p:'<b>'+item(x.l.item).sku+'</b><div class="sub">'+esc(item(x.l.item).name)+'</div>',b:badge(bin(x.l.bin).code,'blue'),lo:'<span class="mono">'+lot(x.l.lot).lot+'</span>',q:x.l.qty,
+        st:x.l.picked?badge('Picked','green'):(cur&&x.ix===cur.ix?badge('In Progress','blue'):badge('Not Started','gray')),
+        a:x.l.picked?'':'<button class="btn sm" onclick="scanPick(\''+pl.id+'\','+x.ix+')">Scan pick</button>'})))+'</div></div>'+(cur?'</div></div>':'</div>');
+    }
+    if(o.status==='Picked')
+      stage='<div class="card"><div class="card-h">Step 2 — Pack items</div><div class="card-b">'+
+      '<div class="frow"><div class="fld"><label>Verify scan (type SKUs, comma-sep)</label><input id="pk-scan-'+o.id+'" type="text" placeholder="'+o.lines.map(l=>item(l.item).sku).join(', ')+'"></div>'+
+      '<div class="fld"><label>Package type / box</label><select id="pk-box-'+o.id+'"><option>8 x 6 x 4</option><option>9 x 7 x 5</option><option>12 x 10 x 6</option><option>Pallet (LTL)</option></select></div></div>'+
+      '<div class="frow"><div class="fld"><label>Package count</label><input id="pk-ct-'+o.id+'" type="number" value="1" min="1"></div>'+
+      '<div class="fld"><label>Weight (lb)</label><input id="pk-w-'+o.id+'" type="number" value="'+Math.max(1,units)+'"></div>'+
+      '<div class="fld"><label>Notes</label><input id="pk-n-'+o.id+'" type="text" placeholder="Add notes…"></div></div>'+
+      '<button class="btn p" onclick="packOrder(\''+o.id+'\')">📦 Pack carton</button></div></div>';
+    if(o.status==='Packed')
+      stage='<div class="card"><div class="card-h">Step 3 — Print label & ship</div><div class="card-b"><button class="btn p" onclick="shipOrder(\''+o.id+'\')">🏷 Buy label & ship</button> <span class="sub">rate-shops USPS / UPS / FedEx via EasyPost</span></div></div>';
+  }
+  const prog=[['Pick items',stepIdx>=1],['Pack items',stepIdx>=2],['Print label',stepIdx>=3],['Complete',stepIdx>=4]];
+  return pageHead('Order '+esc(o.no),'','<button class="btn" onclick="go(\'fulfillment\')">← Back to queue</button><button class="btn" onclick="go(\'orders\')">All orders</button>'+
+    (!['Shipped','Cancelled'].includes(o.status)&&!isBrand()?'<button class="btn" onclick="holdOrder(\''+o.id+'\')">⏸ Put on hold</button><button class="btn danger" onclick="cancelOrder(\''+o.id+'\')">✕ Cancel</button>':''))+
+  '<div class="card"><div class="card-b"><div class="frow">'+
+  '<div class="fld"><label>Customer</label>'+esc(cust(o.cust).name)+'</div>'+
+  '<div class="fld"><label>Source</label>'+badge(o.channel,{Amazon:'amber',Shopify:'green',TikTok:'purple',EDI:'blue',Direct:'gray'}[o.channel]||'gray')+(o.edi?' <span class="tag">EDI PO '+esc(o.poNo||'')+'</span>':'')+'</div>'+
+  '<div class="fld"><label>Order date</label>'+dstr(o.date)+'</div>'+
+  '<div class="fld"><label>Ship to</label>'+esc(o.shipTo.name)+'<div class="sub">'+esc(o.shipTo.city)+', '+esc(o.shipTo.st)+'</div></div>'+
+  '<div class="fld"><label>Priority</label>'+prioBadge(prio(o))+'</div>'+
+  '<div class="fld"><label>Status</label>'+sbadge(o.status)+'</div></div></div></div>'+
+  stepper([{t:'Pick Items',s2:'scan & pick items'},{t:'Pack Items',s2:'pack & verify'},{t:'Print Label',s2:'buy shipping label'},{t:'Complete',s2:'shipped & tracked'}],Math.floor(stepIdx))+
+  '<div class="layout"><div>'+
+  stage+
+  '<div class="card"><div class="card-h">Items to fulfill ('+o.lines.length+')</div><div class="card-b" style="padding:0">'+
+  table([{h:'#',k:'i'},{h:'Product',k:'p'},{h:'SKU',k:'s'},{h:'Ordered',k:'q',num:true},{h:'Picked',k:'pk',num:true},{h:'Remaining',k:'r',num:true},{h:'Status',k:'st'}],
+   o.lines.map((l,i2)=>{const pkd=stepIdx>=1?l.qty:(pl?pl.lines.filter(x=>x.orderId===o.id&&x.item===l.item&&x.picked).reduce((s,x)=>s+x.qty,0):0);
+    return {i:i2+1,p:esc(item(l.item).name),s:'<b>'+item(l.item).sku+'</b>',q:l.qty,pk:pkd?'<span style="color:var(--green);font-weight:700">'+pkd+'</span>':'<span style="color:var(--red)">0</span>',r:l.qty-pkd,
+    st:pkd>=l.qty?badge('Picked','green'):badge('Pending','blue')}}))+'</div></div>'+
+  (o.allocs&&o.allocs.length?'<div class="card"><div class="card-h">Inventory holds (FEFO)</div><div class="card-b" style="padding:0">'+
+   table([{h:'SKU',k:'s'},{h:'Lot',k:'l'},{h:'Best by',k:'b'},{h:'Bin',k:'bn'},{h:'Qty held',k:'q',num:true}],o.allocs.map(a=>({s:item(a.item).sku,l:lot(a.lot).lot,b:dstr(lot(a.lot).bestBy),bn:bin(a.bin).code,q:a.qty})))+'</div></div>':'')+
+  (o.status==='Shipped'?trackPanel(o,isBrand()):'')+
+  '</div><div>'+
+  '<div class="card"><div class="card-h">Order summary</div><div class="card-b" style="font-size:12.5px">'+
+   [['Order #',esc(o.no)],['Total lines',o.lines.length],['Total quantity',units+' units'],['Picked quantity','<span style="color:var(--green);font-weight:700">'+pickedUnits+' ('+Math.round(pickedUnits/Math.max(1,units)*100)+'%)</span>'],['Packages',o.box?'1 · '+esc(o.box):'0'],['Status',sbadge(o.status)]].map(r=>'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eef1f4">'+r[0]+'<b>'+r[1]+'</b></div>').join('')+
+  '</div></div>'+
+  '<div class="card"><div class="card-h">Fulfillment progress</div><div class="card-b">'+progress(fulfillPct(o))+'<div style="margin-top:10px">'+
+   prog.map(p=>'<div style="display:flex;gap:8px;align-items:center;font-size:12.5px;padding:4px 0"><span style="color:'+(p[1]?'var(--green)':'var(--muted)')+'">'+(p[1]?'●':'○')+'</span>'+p[0]+'</div>').join('')+'</div></div></div>'+
+  (isBrand()?'<div class="notice">👁 Brand-portal view: read-only.</div>':'')+
+  '</div></div>';
+};
+function inlineLocCheck(plId,ix,inp){
+  const pl=db.picklists.find(x=>x.id===plId);const l=pl.lines[ix];
+  const v=String(inp.value||'').trim().toUpperCase().replace(/^LOC-/,'');
+  $('#il-loc-ok').innerHTML=v===bin(l.bin).code.toUpperCase()?'<span class="b green">✓ Location confirmed</span>':'<span class="b red">✗ Wrong location — expected '+bin(l.bin).code+'</span>';
+  if(v===bin(l.bin).code.toUpperCase())$('#il-item').focus();
+}
+function inlinePick(plId,ix){
+  const pl=db.picklists.find(x=>x.id===plId);
+  const err=doPick(pl,ix,$('#il-bin').value,$('#il-item').value,$('#il-q').value);
+  if(err)return toast(err,'err');
+  toast('Pick confirmed ✓');refresh();
+}
+/* ---- Customer Portal (preview) ---- */
+let portalQ='';
+PAGES.portal=function(){
+  let list=brandFilter(db.orders).filter(o=>o.status!=='Cancelled');
+  if(portalQ)list=list.filter(o=>o.no.toLowerCase().includes(portalQ.toLowerCase())||o.shipTo.name.toLowerCase().includes(portalQ.toLowerCase())||(o.tracking||'').includes(portalQ));
+  return pageHead('Customer Portal (preview)','Read-only view your customers & brands will get: order status + live carrier tracking. Same data, scoped per account.')+
+  '<div class="scanbox"><input type="text" value="'+esc(portalQ)+'" placeholder="Track an order — enter order #, name, or tracking number…" onkeydown="if(event.key===\'Enter\'){portalQ=this.value;refresh()}"></div>'+
+  '<div class="card" style="margin-top:14px"><div class="card-b" style="padding:0">'+
+  table([{h:'Order #',k:'no'},{h:'Placed',k:'d'},{h:'Items',k:'i'},{h:'Progress',k:'p'},{h:'Carrier',k:'c'},{h:'Tracking',k:'t'},{h:'Status',k:'s'},{h:'',k:'a'}],
+   list.map(o=>{const shp=shipmentOf(o);
+    const stat=o.status==='Shipped'?(shp?shp.status:'Shipped'):(['New','Allocated','Picking','Picked','Packed','On Hold - Stock'].includes(o.status)?'Processing':o.status);
+    const map={'New':10,'On Hold - Stock':10,'Allocated':25,'Picking':40,'Picked':55,'Packed':70,'Shipped':85};
+    const pct=o.status==='Shipped'&&shp&&shp.status==='Delivered'?100:(map[o.status]||10);
+    return {no:'<b>'+esc(o.no)+'</b>',d:dstr(o.date),i:o.lines.map(l=>l.qty+'× '+item(l.item).sku).join('<br>'),
+    p:progress(pct),c:shp?shp.carrier:'—',t:shp?'<span class="mono">'+esc(shp.tracking)+'</span>':'—',s:sbadge(stat),
+    a:'<button class="btn sm" onclick="portalView(\''+o.id+'\')">View</button>'}}),'No orders found')+'</div></div>';
+};
+function portalView(id){const o=db.orders.find(x=>x.id===id);
+  openModal('Your order '+esc(o.no),
+  orderTimeline(o)+
+  table([{h:'Item',k:'n'},{h:'Qty',k:'q',num:true}],o.lines.map(l=>({n:esc(item(l.item).name),q:l.qty})))+
+  '<div style="margin-top:12px">'+(o.status==='Shipped'?trackPanel(o,true):'<div class="notice">Your order is being prepared for shipment.</div>')+'</div>',
+  {saveLabel:null,wide:true});
+}
+function allocOrder(id){const o=db.orders.find(x=>x.id===id);
+  const shorts=[];
+  o.lines.forEach(l=>{if(available(l.item)<l.qty)shorts.push(item(l.item).sku+' (short '+(l.qty-available(l.item))+')')});
+  if(shorts.length){o.status='On Hold - Stock';o.holdReason='Insufficient stock: '+shorts.join(', ')+'. Suggest Build/PO.';toast('Order '+o.no+' placed on stock hold','err');refresh();return}
+  o.allocs=[];o.lines.forEach(l=>{o.allocs.push(...allocate(l.item,l.qty,o.no))});
+  o.status='Allocated';o.holdReason='';closeModal();toast('Inventory held for '+o.no+' (FEFO)');refresh();
+}
+function cancelOrder(id){const o=db.orders.find(x=>x.id===id);deallocate(o.allocs,o.no);o.allocs=[];o.status='Cancelled';closeModal();toast('Order '+o.no+' cancelled, holds released');refresh()}
+function newManualOrder(){
+  openModal('New Manual Order',
+  '<div class="frow"><div class="fld"><label>Customer</label><select id="mo-cust">'+selOpts(db.customers,'id','name')+'</select></div>'+
+  '<div class="fld"><label>Channel</label><select id="mo-ch"><option>Direct</option><option>Amazon</option><option>Shopify</option><option>TikTok</option><option>EDI</option></select></div></div>'+
+  '<div class="frow"><div class="fld"><label>Recipient</label><input id="mo-name" type="text" value="John Doe"></div><div class="fld"><label>City</label><input id="mo-city" type="text" value="Boston"></div><div class="fld"><label>State</label><input id="mo-st" type="text" value="MA"></div></div>'+
+  '<div class="frow"><div class="fld"><label>Item</label>'+itemSel('mo-item',['FG','KIT'])+'</div><div class="fld"><label>Qty</label><input id="mo-qty" type="number" value="1" min="1"></div></div>',
+  {saveLabel:'Create order',onSave:()=>{
+    const o={id:uid('ORD'),no:'ORD-'+(++db.counters.order),channel:$('#mo-ch').value,cust:$('#mo-cust').value,brand:'B1',
+     shipTo:{name:$('#mo-name').value,city:$('#mo-city').value,st:$('#mo-st').value},date:todayISO(),status:'New',allocs:[],
+     lines:[{item:$('#mo-item').value,qty:+$('#mo-qty').value}]};
+    db.orders.unshift(o);closeModal();toast('Order '+o.no+' created');refresh()}});
+}
+function simulateChannelOrder(){
+  const chans=[['Amazon','C1','111-'+Math.floor(Math.random()*9000000+1000000)+'-'+Math.floor(Math.random()*9000000+1000000)],['Shopify','C2','#'+Math.floor(Math.random()*900+1470)],['TikTok','C3','5773476'+Math.floor(Math.random()*89999999+10000000)]];
+  const c=chans[Math.floor(Math.random()*3)];
+  const fgs=['I9','I6','I7','I8','I10'];const names=['Ava Chen','Luis Rojas','Emma Blake','Noah Reid','Mia Torres'];
+  const o={id:uid('ORD'),no:c[2],channel:c[0],cust:c[1],brand:'B1',shipTo:{name:names[Math.floor(Math.random()*5)],city:'Denver',st:'CO'},date:todayISO(),status:'New',allocs:[],lines:[{item:fgs[Math.floor(Math.random()*fgs.length)],qty:Math.ceil(Math.random()*4)}]};
+  db.orders.unshift(o);toast('⇣ '+c[0]+' order '+o.no+' imported via API — auto-allocating…');
+  setTimeout(()=>{allocOrder(o.id)},400);
+}
+function simulateEdiPo(){
+  const po=String(46197660+Math.floor(Math.random()*90));
+  const o={id:uid('ORD'),no:'KEHE-'+po,channel:'EDI',cust:'C4',brand:'B1',edi:true,poNo:po,shipTo:{name:'KeHE DC 25 Portland',city:'Portland',st:'OR'},date:todayISO(),status:'New',allocs:[],lines:[{item:'I1',qty:20},{item:'I6',qty:30}]};
+  db.orders.unshift(o);
+  db.ediDocs.unshift({ts:nowTs(),partner:'KeHE Distributors',doc:'850 PO',ref:po,dir:'IN',status:'Accepted → Order created'});
+  db.ediDocs.unshift({ts:nowTs(),partner:'KeHE Distributors',doc:'855 Ack',ref:po,dir:'OUT',status:'Sent'});
+  toast('⇣ EDI 850 received from KeHE (PO '+po+') — 855 Ack sent, auto-allocating…');
+  setTimeout(()=>{allocOrder(o.id)},400);
+}
+/* ---- Fulfillment Queue ---- */
+let ffTab='',ffQ='',ffPrio='',ffAsg='';
+PAGES.fulfillment=function(){
+  const inQ=brandFilter(db.orders).filter(o=>!['Shipped','Cancelled'].includes(o.status));
+  const buckets=[['Pending',['New','Allocated'],'⏳','#1d4ed8'],['Picking',['Picking'],'🛒','#b45309'],['Packing',['Picked'],'📦','#7e22ce'],['Ready to Ship',['Packed'],'✅','#0d7a5f'],['On Hold',['On Hold - Stock'],'⏸','#b91c1c']];
+  let list=inQ;
+  if(ffTab){const b=buckets.find(x=>x[0]===ffTab);list=list.filter(o=>b[1].includes(o.status))}
+  if(ffQ){const q=ffQ.toLowerCase();list=list.filter(o=>o.no.toLowerCase().includes(q)||o.shipTo.name.toLowerCase().includes(q)||o.lines.some(l=>item(l.item).sku.toLowerCase().includes(q)))}
+  if(ffPrio)list=list.filter(o=>prio(o)===ffPrio);
+  if(ffAsg)list=list.filter(o=>(o.assignee||'')===ffAsg);
+  const emps=db.users.filter(u=>u.role==='employee');
+  return pageHead('Fulfillment Queue','Pick, pack and prepare orders. Click a row to open the fulfillment station.')+
+  '<div class="kpis">'+buckets.map(b=>{const os=inQ.filter(o=>b[1].includes(o.status));
+    return kpiIco(os.length,b[0],b[2],b[3],os.reduce((s,o)=>s+o.lines.reduce((t,l)=>t+l.qty,0),0)+' items',"ffTab=ffTab==='"+b[0]+"'?'':'"+b[0]+"';refresh()",ffTab===b[0])}).join('')+'</div>'+
+  '<div class="tabs"><div class="tab'+(ffTab===''?' active':'')+'" onclick="ffTab=\'\';refresh()">All</div>'+buckets.map(b=>'<div class="tab'+(ffTab===b[0]?' active':'')+'" onclick="ffTab=\''+b[0]+'\';refresh()">'+b[0]+'</div>').join('')+'</div>'+
+  '<div class="filters"><input type="text" placeholder="Search by order #, customer, SKU…" value="'+esc(ffQ)+'" onkeydown="if(event.key===\'Enter\'){ffQ=this.value;refresh()}">'+
+  '<select onchange="ffPrio=this.value;refresh()"><option value="">All priorities</option>'+['High','Medium','Low'].map(p=>'<option '+(ffPrio===p?'selected':'')+'>'+p+'</option>').join('')+'</select>'+
+  '<select onchange="ffAsg=this.value;refresh()"><option value="">All assignees</option>'+emps.map(u=>'<option value="'+u.id+'"'+(ffAsg===u.id?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select></div>'+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Order #',k:'no'},{h:'Customer',k:'c'},{h:'Items',k:'it'},{h:'First pick',k:'lc'},{h:'Priority',k:'pr'},{h:'Assigned to',k:'as'},{h:'Status',k:'st'},{h:'Progress',k:'pg'},{h:'Action',k:'a'}],
+   list.map(o=>{const pct=fulfillPct(o);const firstBin=o.allocs&&o.allocs[0]?bin(o.allocs[0].bin).code:'—';
+    return {_click:'openOrder(\''+o.id+'\')',no:'<b>'+esc(o.no)+'</b><div class="sub">'+o.channel+'</div>',c:esc(o.shipTo.name),
+    it:o.lines.reduce((s,l)=>s+l.qty,0)+' items<div class="sub">'+o.lines.length+' SKUs</div>',lc:firstBin==='—'?'—':badge(firstBin,'blue'),pr:prioBadge(prio(o)),
+    as:o.assignee?'<span class="avatar">'+esc(userById(o.assignee).name[0])+'</span> '+esc(userById(o.assignee).name.split(' (')[0])+' <span class="linklike" style="font-size:10.5px" onclick="event.stopPropagation();assignOrder(\''+o.id+'\')">edit</span>':'<span class="linklike" onclick="event.stopPropagation();assignOrder(\''+o.id+'\')">Assign</span>',
+    st:sbadge(o.status),pg:progress(pct)+'<span class="sub">'+pct+'%</span>',a:fulfillActionBtn(o)}}),'Queue is clear 🎉')+'</div></div>'+
+  '<div class="card"><div class="card-h">Fulfillment workflow</div><div class="card-b"><div class="flow">'+
+  '<div class="step">Pick items<span class="s2">scan locations & products</span></div><span class="arr">→</span><div class="step">Pack items<span class="s2">pack & verify quantities</span></div><span class="arr">→</span><div class="step">Print label<span class="s2">EasyPost rate shop</span></div><span class="arr">→</span><div class="step hl">Complete<span class="s2">shipped + auto-invoice</span></div></div></div></div>';
+};
+function assignOrder(id){const o=db.orders.find(x=>x.id===id);
+  const emps=db.users.filter(u=>u.role==='employee');
+  openModal('Assign — '+o.no,'<div class="fld"><label>Assignee</label><select id="asg-u"><option value="">Unassigned</option>'+emps.map(u=>'<option value="'+u.id+'"'+(o.assignee===u.id?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select></div>'+
+  '<div class="fld" style="margin-top:10px"><label>Priority</label><select id="asg-p">'+['High','Medium','Low'].map(p=>'<option'+(prio(o)===p?' selected':'')+'>'+p+'</option>').join('')+'</select></div>',
+  {onSave:()=>{o.assignee=$('#asg-u').value;o.priority=$('#asg-p').value;closeModal();toast('Updated');refresh()}});
+}
+
+/* ---- Cycle Count ---- */
+PAGES.cyclecount=function(){
+  const ccs=db.cycleCounts;
+  const done=ccs.filter(c=>c.status==='Completed');
+  const varOf=c=>c.lines.reduce((s,l)=>s+(l.counted-l.sys)*(item(l.item).cost||0),0);
+  const totVar=done.reduce((s,c)=>s+varOf(c),0);
+  const counted=done.reduce((s,c)=>s+c.lines.length,0);
+  const totLines=ccs.reduce((s,c)=>s+(c.lines.length||db.inv.filter(r=>r.bin===c.bin&&r.qty>0).length),0);
+  return pageHead('Cycle Count','Count bins against system stock. Completing a count auto-posts adjustments and writes the inventory ledger.','<button class="btn p" onclick="newCycleCount()">+ Start new count</button>')+
+  '<div class="kpis">'+
+  kpiIco(Math.round(counted/Math.max(1,totLines)*100)+'%','Overall progress','◔','#1d4ed8',counted+' / '+totLines+' lines')+
+  kpiIco(ccs.filter(c=>c.status==='Pending').length,'Pending','⏳','#b45309')+
+  kpiIco(done.length,'Completed','✅','#15803d')+
+  kpiIco(fmt$(Math.abs(totVar)),'Net variance '+(totVar<0?'(shrink)':''),'±','#b91c1c')+
+  '</div>'+
+  '<div class="layout"><div><div class="card"><div class="card-h">Cycle count locations</div><div class="card-b" style="padding:0">'+
+  table([{h:'#',k:'i'},{h:'Location',k:'l'},{h:'Zone',k:'z'},{h:'Status',k:'s'},{h:'Counted',k:'c'},{h:'Variance $',k:'v',num:true},{h:'Last counted',k:'d'},{h:'',k:'a'}],
+   ccs.map((c,ix)=>{const rows=db.inv.filter(r=>r.bin===c.bin&&r.qty>0).length;const v=varOf(c);
+    return {i:ix+1,l:'<b>'+bin(c.bin).code+'</b>',z:bin(c.bin).zone,s:sbadge(c.status==='Completed'?'Complete':c.status==='Pending'?'Draft':c.status),
+    c:c.status==='Completed'?c.lines.length+' / '+c.lines.length+' (100%)':'0 / '+rows+' (0%)',
+    v:c.status==='Completed'?'<span style="color:'+(v<0?'var(--red)':'var(--green)')+';font-weight:600">'+(v<0?'−':'+')+fmt$(Math.abs(v)).slice(1)+'</span>':'—',
+    d:c.date?dstr(c.date)+'<div class="sub">by '+esc(userById(c.by).name.split(' (')[0])+'</div>':'—',
+    a:c.status!=='Completed'?'<button class="btn sm p" onclick="runCount(\''+c.id+'\')">Start count</button>':'<button class="btn sm" onclick="viewCount(\''+c.id+'\')">View</button>'}}),'No counts scheduled — start one.')+'</div></div></div>'+
+  '<div><div class="card"><div class="card-h">Variance summary</div><div class="card-b" style="font-size:12.5px">'+
+   [['Total variance','<b style="color:'+(totVar<0?'var(--red)':'var(--green)')+'">'+(totVar<0?'−':'+')+fmt$(Math.abs(totVar)).slice(1)+'</b>'],
+    ['Positive variance','+'+fmt$(done.reduce((s,c)=>s+c.lines.reduce((t,l)=>t+Math.max(0,(l.counted-l.sys))*(item(l.item).cost||0),0),0)).slice(1)],
+    ['Negative variance','−'+fmt$(Math.abs(done.reduce((s,c)=>s+c.lines.reduce((t,l)=>t+Math.min(0,(l.counted-l.sys))*(item(l.item).cost||0),0),0))).slice(1)],
+    ['Adjustments posted',db.adjustments.filter(a=>a.reason==='Cycle count').length]].map(r=>'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eef1f4">'+r[0]+'<span>'+r[1]+'</span></div>').join('')+
+  '</div></div>'+
+  '<div class="card"><div class="card-h">💡 Tips</div><div class="card-b sub">Scan the location barcode to start counting. Count what you physically see — the system posts the +/− adjustment and full ledger entry automatically. Blind counts: system qty is hidden until you enter yours.</div></div></div></div>';
+};
+function newCycleCount(){
+  openModal('Start New Count','<div class="fld"><label>Bin location</label><select id="cc-bin">'+selOpts(db.bins.filter(b=>wh(b.wh).type==='internal'),'id',b=>'LOC-'+b.code+' ('+b.zone+')')+'</select></div>',
+  {saveLabel:'Create count',onSave:()=>{
+    db.cycleCounts.unshift({id:uid('CC'),no:'CC-00'+(++db.counters.cc),bin:$('#cc-bin').value,status:'Pending',date:'',by:'',posted:false,lines:[]});
+    closeModal();toast('Count created');refresh()}});
+}
+function runCount(id){
+  const c=db.cycleCounts.find(x=>x.id===id);
+  const rows=db.inv.filter(r=>r.bin===c.bin&&r.qty>0);
+  if(!rows.length)return toast('Bin '+bin(c.bin).code+' is empty — nothing to count','err');
+  openModal('Count '+bin(c.bin).code+' — enter physical quantities',
+  '<div class="scanbox" style="margin-bottom:12px"><b>📍 '+bin(c.bin).code+'</b> · '+bin(c.bin).zone+' zone · scan each item and enter what you physically count.</div>'+
+  rows.map((r,ix)=>'<div class="frow" style="align-items:end;border-bottom:1px solid var(--line);padding-bottom:8px">'+
+   '<div class="fld"><label>Item</label><b>'+item(r.item).sku+'</b><div class="sub">lot '+lot(r.lot).lot+'</div></div>'+
+   '<div class="fld"><label>System qty</label>'+r.qty+'</div>'+
+   '<div class="fld"><label>Counted qty</label><input id="cc-q-'+ix+'" type="number" value="'+r.qty+'" min="0"></div></div>').join(''),
+  {saveLabel:'✓ Complete count & post variances',wide:true,onSave:()=>{
+    c.lines=rows.map((r,ix)=>({item:r.item,lot:r.lot,sys:r.qty,counted:+($('#cc-q-'+ix).value||0)}));
+    let adj=0;
+    c.lines.forEach(l=>{const d=l.counted-l.sys;if(!d)return;adj++;
+      if(d>0)addStock(l.item,l.lot,c.bin,d,'ADJUST','CYCLE '+c.no,'Cycle count variance');
+      else removeStock(l.item,l.lot,c.bin,-d,'ADJUST','CYCLE '+c.no,'Cycle count variance');
+      db.adjustments.unshift({no:'ADJ-'+(++db.counters.adj),date:todayISO(),item:l.item,lot:l.lot,bin:c.bin,qty:d,reason:'Cycle count',by:curUser.id})});
+    c.status='Completed';c.date=todayISO();c.by=curUser.id;c.posted=true;
+    closeModal();toast('Count complete — '+adj+' variance adjustment'+(adj===1?'':'s')+' posted');refresh()}});
+}
+function viewCount(id){
+  const c=db.cycleCounts.find(x=>x.id===id);
+  openModal('Count '+c.no+' — '+bin(c.bin).code,
+  table([{h:'Item',k:'i'},{h:'Lot',k:'l'},{h:'System',k:'s',num:true},{h:'Counted',k:'c',num:true},{h:'Variance',k:'v',num:true},{h:'$ impact',k:'d',num:true}],
+   c.lines.map(l=>({i:item(l.item).sku,l:lot(l.lot).lot,s:l.sys,c:l.counted,v:(l.counted-l.sys>0?'+':'')+(l.counted-l.sys),d:fmt$((l.counted-l.sys)*(item(l.item).cost||0))})))+
+  '<p class="sub" style="margin-top:8px">Counted by '+esc(userById(c.by).name)+' on '+dstr(c.date)+'. Variances posted as adjustments.</p>',{saveLabel:null});
+}
+
+/* ---- Vendors ---- */
+PAGES.vendors=function(){
+  return pageHead('Vendors','Suppliers of raw materials, packaging and co-manufacturing services.','<button class="btn p" onclick="newVendor()">+ New vendor</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Vendor',k:'n'},{h:'Type',k:'t'},{h:'Contact',k:'c'},{h:'Terms',k:'tm'},{h:'Open POs',k:'op',num:true},{h:'',k:'a'}],
+   db.vendors.map(v=>({n:'<b>'+esc(v.name)+'</b>',t:badge(v.type,v.type.includes('Co-Man')?'purple':'gray'),c:esc(v.contact),tm:v.terms,
+    op:db.pos.filter(p=>p.vendor===v.id&&!['Received','Closed'].includes(p.status)).length,
+    a:'<button class="btn sm" onclick="newPOForVendor(\''+v.id+'\')">+ PO</button>'})))+'</div></div>';
+};
+function newVendor(){openModal('New Vendor','<div class="frow"><div class="fld"><label>Name</label><input id="v-n" type="text"></div><div class="fld"><label>Type</label><select id="v-t"><option>Raw Materials</option><option>Packaging</option><option>Co-Man / Nuts</option><option>Supplies</option></select></div></div><div class="frow"><div class="fld"><label>Contact email</label><input id="v-c" type="email"></div><div class="fld"><label>Terms</label><select id="v-tm"><option>Net 30</option><option>Net 15</option><option>Net 45</option><option>Prepaid</option><option>Card</option></select></div></div>',
+ {onSave:()=>{if(!$('#v-n').value)return toast('Name required','err');db.vendors.push({id:uid('V'),name:$('#v-n').value,type:$('#v-t').value,contact:$('#v-c').value,terms:$('#v-tm').value});closeModal();toast('Vendor added');refresh()}})}
+
+/* ---- Purchase Orders ---- */
+PAGES.pos=function(){
+  const list=db.pos;
+  return pageHead('Purchase Orders','RM/PM purchasing and co-manufacturer production POs. Receiving happens in Item Receipt with lot + location scan.','<button class="btn p" onclick="newPO()">+ New PO</button>')+
+  '<div class="flow"><div class="step">Draft</div><span class="arr">→</span><div class="step">Sent<span class="s2">emailed / EDI to vendor</span></div><span class="arr">→</span><div class="step hl">Partially Received<span class="s2">Item Receipt scans</span></div><span class="arr">→</span><div class="step">Received<span class="s2">stock + lot posted</span></div><span class="arr">→</span><div class="step">Closed<span class="s2">3-way match → bill</span></div></div>'+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'PO #',k:'no'},{h:'Vendor',k:'v'},{h:'Type',k:'t'},{h:'Date',k:'d'},{h:'ETA',k:'e'},{h:'Lines',k:'l'},{h:'Progress',k:'pr'},{h:'Status',k:'s'},{h:'',k:'a'}],
+   list.map(p=>{const ordered=p.lines.reduce((s,l)=>s+l.qty,0),rcv=p.lines.reduce((s,l)=>s+(l.rcv||0),0);
+    return {no:'<b>'+p.no+'</b>',v:esc(vend(p.vendor).name),t:badge(p.type,p.type==='Co-Man FG'?'purple':'gray'),d:dstr(p.date),e:dstr(p.eta),
+    l:p.lines.map(l=>item(l.item).sku+' × '+l.qty.toLocaleString()).join('<br>'),pr:progress(rcv/ordered*100)+'<span class="sub">'+rcv.toLocaleString()+'/'+ordered.toLocaleString()+'</span>',s:sbadge(p.status),
+    a:(p.status==='Draft'?'<button class="btn sm p" onclick="sendPO(\''+p.id+'\')">Send</button> ':'')+
+      (['Sent','Partially Received'].includes(p.status)?'<button class="btn sm p" onclick="receivePO(\''+p.id+'\')">Receive</button> ':'')+
+      (p.status==='Received'?'<button class="btn sm" onclick="closePO(\''+p.id+'\')">Close & bill</button>':'')}}))+'</div></div>';
+};
+function sendPO(id){const p=db.pos.find(x=>x.id===id);p.status='Sent';toast(p.no+' emailed to '+vend(p.vendor).name+' ✉');refresh()}
+function closePO(id){const p=db.pos.find(x=>x.id===id);p.status='Closed';toast(p.no+' closed — vendor bill created for 3-way match');refresh()}
+function newPO(pre){
+  openModal('New Purchase Order',
+  '<div class="frow"><div class="fld"><label>Vendor</label><select id="po-v">'+selOpts(db.vendors,'id','name',pre&&pre.vendor)+'</select></div>'+
+  '<div class="fld"><label>Type</label><select id="po-t"><option>RM/PM</option><option>Co-Man FG</option></select></div>'+
+  '<div class="fld"><label>ETA</label><input id="po-eta" type="date" value="'+daysAgo(-7)+'"></div></div>'+
+  '<div class="frow"><div class="fld"><label>Item</label>'+itemSel('po-item',null,pre&&pre.item)+'</div><div class="fld"><label>Qty</label><input id="po-q" type="number" value="'+(pre&&pre.qty||100)+'"></div><div class="fld"><label>Unit cost $</label><input id="po-p" type="number" step="0.01" value="'+(pre&&pre.cost||1)+'"></div></div>',
+  {saveLabel:'Create draft PO',onSave:()=>{
+   db.pos.unshift({id:uid('PO'),no:'PO-'+(++db.counters.po),vendor:$('#po-v').value,type:$('#po-t').value,date:todayISO(),eta:$('#po-eta').value,status:'Draft',lines:[{item:$('#po-item').value,qty:+$('#po-q').value,price:+$('#po-p').value,rcv:0}],notes:''});
+   closeModal();toast('Draft PO created');refresh()}});
+}
+function newPOFor(itemId){const i=item(itemId);newPO({item:itemId,qty:Math.max(1,(i.reorder||0)*2-onHand(itemId)),cost:i.cost});go('pos')}
+function newPOForVendor(vid){newPO({vendor:vid})}
+function receivePO(id){go('receipt');setTimeout(()=>{const s=$('#rcpt-po');if(s){s.value=id;rcptRender()}},60)}
+
+/* ---- Item Receipt (scan receiving) ---- */
+PAGES.receipt=function(){
+  const open=db.pos.filter(p=>['Sent','Partially Received'].includes(p.status));
+  return pageHead('Receive Inventory','Receive against a PO: smart-scan products, enter lot & expiry, scan the putaway location. Posting updates stock + the Receiving Log.')+
+  '<div class="card"><div class="card-b"><div class="frow">'+
+  '<div class="fld"><label>Purchase order *</label>'+(open.length?'<select id="rcpt-po" onchange="rcptRender()">'+selOpts(open,'id',p=>p.no+' — '+vend(p.vendor).name)+'</select>':'<span class="sub">No open POs</span>')+'</div>'+
+  '<div class="fld"><label>Receipt date *</label><input type="date" value="'+todayISO()+'"></div>'+
+  '<div class="fld"><label>Warehouse *</label><select><option>CMNE Main Warehouse</option></select></div></div>'+
+  '<div class="scanbox"><input id="rcpt-scan" type="text" placeholder="🔍 Search / scan product (SKU, UPC, product name…)" onkeydown="if(event.key===\'Enter\')rcptSmartScan(this)"><div class="sub" style="margin-top:5px">Scan a product barcode to jump to its line and auto-focus the quantity.</div></div>'+
+  '</div></div><div id="rcpt-area"></div>'+
+  '<div class="card"><div class="card-h">Recent receipts</div><div class="card-b" style="padding:0">'+
+  table([{h:'When',k:'w'},{h:'PO #',k:'r'},{h:'Vendor',k:'v'},{h:'Items',k:'i'},{h:'Received by',k:'u'},{h:'Status',k:'s'}],
+   db.recvLogs.slice(0,6).map(l=>({w:tstr(l.ts),r:'<b>'+esc(l.ref)+'</b>',v:esc(l.vendor),i:'<span class="sub">'+esc(l.items)+'</span>',u:esc(userById(l.by).name.split(' (')[0]),s:badge('Completed','green')})),'No receipts yet')+'</div></div>';
+};
+function rcptSmartScan(inp){
+  const p=db.pos.find(x=>x.id===($('#rcpt-po')||{}).value);if(!p)return;
+  const code=inp.value.trim().toLowerCase();inp.value='';
+  const ix=p.lines.findIndex(l=>item(l.item).sku.toLowerCase()===code||String(item(l.item).upc).toLowerCase()===code||item(l.item).name.toLowerCase().includes(code));
+  if(ix<0)return toast('"'+code+'" is not on '+p.no,'err');
+  const q=$('#rc-q-'+ix);if(q){q.focus();toast('✓ '+item(p.lines[ix].item).sku+' — line '+(ix+1)+' selected, enter qty')}
+}
+function rcptRender(){
+  const p=db.pos.find(x=>x.id===$('#rcpt-po').value);if(!p)return;
+  const bins=db.bins.filter(b=>['Receiving','Raw Materials','Packaging','Pick','Bulk'].includes(b.zone));
+  const ordered=p.lines.reduce((s,l)=>s+l.qty,0),rcvd=p.lines.reduce((s,l)=>s+(l.rcv||0),0);
+  $('#rcpt-area').innerHTML='<div class="layout"><div><div class="card"><div class="card-h">Items to receive — '+p.no+'</div><div class="card-b">'+
+  p.lines.map((l,ix)=>{const rem=l.qty-(l.rcv||0);const it=item(l.item);
+   return '<div class="frow" style="align-items:end;border-bottom:1px solid var(--line);padding-bottom:10px">'+
+   '<div class="fld"><label>Product</label><b>'+it.sku+'</b><div class="sub">'+esc(it.name)+' · remaining '+rem.toLocaleString()+'</div></div>'+
+   '<div class="fld"><label>Lot / batch</label><input id="rc-l-'+ix+'" type="text" value="'+(it.type==='FG'?'25':'RM-78')+Math.floor(Math.random()*900+100)+'"></div>'+
+   '<div class="fld"><label>Expiry / best-by</label><input id="rc-b-'+ix+'" type="date" value="'+daysAgo(-365)+'"></div>'+
+   '<div class="fld"><label>Received qty</label><input id="rc-q-'+ix+'" type="number" value="'+rem+'" min="0" max="'+rem+'"'+(rem?'':' disabled')+'></div>'+
+   '<div class="fld"><label>Location ▸ scan bin</label><select id="rc-bin-'+ix+'">'+selOpts(bins,'id',b=>'LOC-'+b.code+' ('+b.zone+')',it.type==='RM'?'BIN7':it.type==='PM'?'BIN8':'BIN1')+'</select></div></div>'}).join('')+
+  '<div class="frow"><div class="fld"><label>Condition</label><select id="rc-cond"><option>Good</option><option>Damaged - partial</option><option>Rejected</option></select></div><div class="fld"><label>Temp check</label><input id="rc-temp" type="text" value="70°F"></div><div class="fld"><label>COA received</label><select id="rc-coa"><option>Yes</option><option>No</option><option>N/A</option></select></div></div>'+
+  '<button class="btn p" onclick="postReceipt(\''+p.id+'\')">✓ Save receipt</button> <button class="btn" onclick="toast(\'Draft saved\')">Save as draft</button>'+
+  '</div></div></div>'+
+  '<div><div class="card"><div class="card-h">PO summary</div><div class="card-b" style="font-size:12.5px">'+
+   [['PO number','<b>'+p.no+'</b>'],['Supplier',esc(vend(p.vendor).name)],['Expected',dstr(p.eta)],['Total expected',p.lines.length+' items / '+ordered.toLocaleString()+' units'],['Received so far',rcvd.toLocaleString()+' units'],['Status',sbadge(p.status)]].map(r=>'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eef1f4;gap:10px">'+r[0]+'<span style="text-align:right">'+r[1]+'</span></div>').join('')+
+  '</div></div>'+
+  '<div class="card"><div class="card-h">💡 Quick tips</div><div class="card-b sub">1. Scan a product barcode above to auto-select its line.<br>2. Assign the correct putaway location per line.<br>3. Check COA & temperature — they go straight into the Receiving Log for audits.</div></div></div></div>';
+}
+function postReceipt(id){
+  const p=db.pos.find(x=>x.id===id);let any=false,itemsTxt=[];
+  p.lines.forEach((l,ix)=>{const q=+($('#rc-q-'+ix)?$('#rc-q-'+ix).value:0);if(!q)return;any=true;
+    const lotNo=$('#rc-l-'+ix).value||'NA';const bb=$('#rc-b-'+ix).value;const binId=$('#rc-bin-'+ix).value;
+    let lo=db.lots.find(x=>x.item===l.item&&x.lot===lotNo);
+    if(!lo){lo={id:uid('L'),item:l.item,lot:lotNo,bestBy:bb};db.lots.push(lo)}
+    addStock(l.item,lo.id,binId,q,'RECEIPT',p.no,'PO receipt');l.rcv=(l.rcv||0)+q;itemsTxt.push(item(l.item).sku+' ×'+q+' (lot '+lotNo+')')});
+  if(!any)return toast('Enter quantities first','err');
+  p.status=p.lines.every(l=>(l.rcv||0)>=l.qty)?'Received':'Partially Received';
+  db.recvLogs.unshift({ts:nowTs(),ref:p.no,vendor:vend(p.vendor).name,items:itemsTxt.join(', '),by:curUser.id,temp:$('#rc-temp').value,condition:$('#rc-cond').value,coa:$('#rc-coa').value});
+  toast('Receipt posted — inventory & receiving log updated');refresh();
+}
+
+/* ---- Return to Vendors ---- */
+PAGES.rtv=function(){
+  return pageHead('Return to Vendors','Send defective or excess stock back to suppliers (RMA).','<button class="btn p" onclick="newRTV()">+ New return</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'RMA #',k:'no'},{h:'Vendor',k:'v'},{h:'Item',k:'i'},{h:'Qty',k:'q',num:true},{h:'Reason',k:'r'},{h:'Date',k:'d'},{h:'Status',k:'s'}],
+   db.rtvs.map(r=>({no:r.no,v:esc(vend(r.vendor).name),i:item(r.item).sku,q:r.qty,r:esc(r.reason),d:dstr(r.date),s:sbadge(r.status)})),'No vendor returns yet.')+'</div></div>';
+};
+function newRTV(){
+  openModal('Return to Vendor','<div class="frow"><div class="fld"><label>Vendor</label><select id="rtv-v">'+selOpts(db.vendors,'id','name')+'</select></div><div class="fld"><label>Item</label>'+itemSel('rtv-i')+'</div></div>'+
+  '<div class="frow"><div class="fld"><label>Qty</label><input id="rtv-q" type="number" value="1"></div><div class="fld"><label>Reason</label><select id="rtv-r"><option>Damaged in transit</option><option>Failed QC / COA mismatch</option><option>Wrong item shipped</option><option>Excess stock</option></select></div></div>',
+  {saveLabel:'Create RMA & deduct stock',onSave:()=>{
+    const iid=$('#rtv-i').value,q=+$('#rtv-q').value;
+    const rows=invRows(iid);if(!rows.length||onHand(iid)<q)return toast('Not enough stock to return','err');
+    let need=q;for(const r of rows){const t=Math.min(r.qty-r.alloc,need);if(t>0){removeStock(iid,r.lot,r.bin,t,'RTV','RMA','Return to vendor');need-=t}if(!need)break}
+    db.rtvs.unshift({id:uid('RTV'),no:'RMA-'+(++db.counters.rma),vendor:$('#rtv-v').value,item:iid,qty:q,reason:$('#rtv-r').value,date:todayISO(),status:'Sent'});
+    closeModal();toast('RMA created, stock deducted');refresh()}});
+}
+
+/* ---- Re-Order ---- */
+function reorderList(){return brandFilter(db.items).filter(i=>i.reorder&&available(i.id)<i.reorder)}
+PAGES.reorder=function(){
+  const rows=reorderList();
+  return pageHead('Re-Order','Items whose available stock (on hand − holds) fell below reorder point. One click drafts a PO — or a Work Order for items you build in-house.')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'SKU',k:'s'},{h:'Item',k:'n'},{h:'Type',k:'t'},{h:'On hand',k:'oh',num:true},{h:'Held',k:'al',num:true},{h:'Available',k:'av',num:true},{h:'Reorder pt',k:'rp',num:true},{h:'Suggested qty',k:'sq',num:true},{h:'',k:'a'}],
+   rows.map(i=>({s:'<b>'+i.sku+'</b>',n:esc(i.name),t:badge(i.type,i.type==='FG'?'teal':'gray'),oh:onHand(i.id),al:allocated(i.id),av:available(i.id),rp:i.reorder,sq:Math.max(0,i.reorder*2-available(i.id)),
+    a:(db.boms[i.id]?'<button class="btn sm p" onclick="newWOFor(\''+i.id+'\')">+ Work Order</button> ':'')+'<button class="btn sm" onclick="newPOFor(\''+i.id+'\')">+ PO</button>'})),'Everything is above reorder point ✅')+'</div></div>';
+};
+/* ---- Work Orders ---- */
+PAGES.workorders=function(){
+  return pageHead('Work Orders','Plan production. Releasing a WO checks BOM component availability; completing it happens on the Builds page (consume components → produce FG lot).','<button class="btn p" onclick="newWO()">+ New work order</button>')+
+  '<div class="flow"><div class="step">Planned</div><span class="arr">→</span><div class="step">Released<span class="s2">components reserved</span></div><span class="arr">→</span><div class="step hl">WIP<span class="s2">Job Tracker entries</span></div><span class="arr">→</span><div class="step">Done<span class="s2">Build posted, FG lot created</span></div></div>'+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'WO #',k:'no'},{h:'Build item',k:'i'},{h:'Qty',k:'q',num:true},{h:'Run',k:'r'},{h:'Due',k:'d'},{h:'Component check',k:'c'},{h:'Status',k:'s'},{h:'',k:'a'}],
+   db.workOrders.map(w=>{const chk=bomCheck(w.item,w.qty);
+    return {no:'<b>'+w.no+'</b>',i:item(w.item).sku+'<div class="sub">'+esc(item(w.item).name)+'</div>',q:w.qty,r:w.run||'—',d:dstr(w.due),
+    c:chk.ok?badge('All components OK','green'):badge('Short: '+chk.shorts.map(s=>s.sku).join(', '),'red'),s:sbadge(w.status),
+    a:(w.status==='Planned'?'<button class="btn sm p" onclick="releaseWO(\''+w.id+'\')">Release</button> ':'')+
+      (['Released','WIP'].includes(w.status)?'<button class="btn sm p" onclick="buildFromWO(\''+w.id+'\')">Build →</button>':'')}}))+'</div></div>';
+};
+function bomCheck(itemId,qty){
+  const bom=db.boms[itemId]||[];const shorts=[];
+  bom.forEach(c=>{if(available(c.item)<c.qty*qty)shorts.push({sku:item(c.item).sku,need:c.qty*qty,have:available(c.item)})});
+  return {ok:bom.length>0&&!shorts.length,shorts,hasBom:bom.length>0};
+}
+function releaseWO(id){const w=db.workOrders.find(x=>x.id===id);const chk=bomCheck(w.item,w.qty);
+  if(!chk.hasBom)return toast('No BOM defined for this item','err');
+  if(!chk.ok)return toast('Cannot release — short components: '+chk.shorts.map(s=>s.sku+' need '+s.need+' have '+s.have).join('; '),'err');
+  w.status='Released';toast(w.no+' released to floor');refresh()}
+function newWO(pre){
+  openModal('New Work Order','<div class="frow"><div class="fld"><label>Item to build (has BOM)</label><select id="wo-i">'+selOpts(db.items.filter(i=>db.boms[i.id]),'id',i=>i.sku+' — '+i.name,pre&&pre.item)+'</select></div><div class="fld"><label>Qty</label><input id="wo-q" type="number" value="'+(pre&&pre.qty||50)+'"></div><div class="fld"><label>Due</label><input id="wo-d" type="date" value="'+daysAgo(-7)+'"></div></div>',
+  {saveLabel:'Create WO',onSave:()=>{db.workOrders.unshift({id:uid('WO'),no:'WO-00'+(++db.counters.wo),item:$('#wo-i').value,qty:+$('#wo-q').value,status:'Planned',due:$('#wo-d').value,run:'Run #'+(db.counters.wo)});closeModal();toast('Work order created');refresh()}});
+}
+function newWOFor(itemId){newWO({item:itemId,qty:Math.max(10,(item(itemId).reorder||10)*2-available(itemId))});go('workorders')}
+
+/* ---- Builds ---- */
+PAGES.builds=function(){
+  return pageHead('Builds','Executed production: consumes component lots per BOM, produces a finished-goods lot. Full traceability both directions.','<button class="btn p" onclick="buildFromWO()">+ New build</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Build #',k:'no'},{h:'WO',k:'wo'},{h:'Output',k:'o'},{h:'Qty',k:'q',num:true},{h:'FG Lot',k:'l'},{h:'Date',k:'d'},{h:'By',k:'b'},{h:'Trace',k:'t'}],
+   db.builds.map(b=>({no:'<b>'+b.no+'</b>',wo:b.wo||'—',o:item(b.item).sku,q:b.qty,l:'<span class="mono">'+esc(b.lotOut)+'</span>',d:dstr(b.date),b:esc(userById(b.by).name.split(' ')[0]),
+    t:'<button class="btn sm" onclick="traceBuild(\''+b.id+'\')">🔍 Trace</button>'})),'No builds yet — release a Work Order first.')+'</div></div>';
+};
+function traceBuild(id){const b=db.builds.find(x=>x.id===id);
+  openModal('Traceability — '+b.no,
+  '<p style="margin-bottom:10px"><b>'+item(b.item).sku+'</b> lot <span class="mono">'+esc(b.lotOut)+'</span> ('+b.qty+' '+item(b.item).uom+') was produced on '+dstr(b.date)+' by '+esc(userById(b.by).name)+' consuming:</p>'+
+  table([{h:'Component',k:'c'},{h:'Lot consumed',k:'l'},{h:'Qty',k:'q',num:true}],b.components.map(c=>({c:item(c.item).sku+' — '+esc(item(c.item).name),l:'<span class="mono">'+esc(c.lot)+'</span>',q:c.qty})))+
+  '<p style="margin-top:10px;font-size:12px;color:var(--muted)">Forward trace: search lot '+esc(b.lotOut)+' in Lots/Barcode Search to see which orders & shipments consumed this lot.</p>',{saveLabel:null,wide:true});
+}
+function buildFromWO(woId){
+  const wos=db.workOrders.filter(w=>['Released','WIP'].includes(w.status));
+  if(!wos.length&&!woId)return toast('No released work orders. Create & release one first.','err');
+  const w=woId?db.workOrders.find(x=>x.id===woId):wos[0];
+  if(w&&w.status==='Planned')return toast('Release the WO first','err');
+  const chk=bomCheck(w.item,w.qty);
+  const bom=db.boms[w.item]||[];
+  openModal('Post Build — '+w.no,
+  '<div class="frow"><div class="fld"><label>Output</label><b>'+item(w.item).sku+'</b> '+esc(item(w.item).name)+'</div><div class="fld"><label>Qty built</label><input id="bl-q" type="number" value="'+w.qty+'" max="'+w.qty+'"></div>'+
+  '<div class="fld"><label>New FG lot #</label><input id="bl-lot" type="text" value="'+(25200+Math.floor(Math.random()*90))+'"></div><div class="fld"><label>Best by</label><input id="bl-bb" type="date" value="'+daysAgo(-540)+'"></div></div>'+
+  (chk.ok?'':'<div class="notice">⚠ Component shortage — build will fail unless quantity reduced.</div>')+
+  '<div class="card"><div class="card-h">Components to consume (FEFO lots)</div><div class="card-b" style="padding:0">'+
+  table([{h:'Component',k:'c'},{h:'Per unit',k:'p',num:true},{h:'Total need',k:'t',num:true},{h:'Available',k:'a',num:true}],
+   bom.map(c=>({c:item(c.item).sku,p:c.qty,t:+(c.qty*w.qty).toFixed(2),a:available(c.item)})))+'</div></div>',
+  {saveLabel:'⚒ Post build',wide:true,onSave:()=>{
+    const q=+$('#bl-q').value;const lotNo=$('#bl-lot').value;
+    const comps=[];
+    for(const c of bom){let need=+(c.qty*q).toFixed(4);
+      const rows=invRows(c.item).sort((a,b2)=>(lot(a.lot).bestBy||'9999')<(lot(b2.lot).bestBy||'9999')?-1:1);
+      const av=rows.reduce((s,r)=>s+r.qty-r.alloc,0);if(av<need)return toast('Short '+item(c.item).sku+' — need '+need+', have '+av,'err');
+      for(const r of rows){const t=Math.min(r.qty-r.alloc,need);if(t>0){removeStock(c.item,r.lot,r.bin,t,'BUILD-CONSUME',w.no,'Consumed in build');comps.push({item:c.item,lot:lot(r.lot).lot,qty:+t.toFixed(2)});need-=t}if(need<=0)break}}
+    let lo=db.lots.find(x=>x.item===w.item&&x.lot===lotNo);
+    if(!lo){lo={id:uid('L'),item:w.item,lot:lotNo,bestBy:$('#bl-bb').value};db.lots.push(lo)}
+    addStock(w.item,lo.id,'BIN12',q,'BUILD-OUTPUT',w.no,'Produced');
+    const b={id:uid('BLD'),no:'BLD-0'+(++db.counters.bld),wo:w.no,item:w.item,qty:q,lotOut:lotNo,date:todayISO(),by:curUser.id,status:'Complete',components:comps};
+    db.builds.unshift(b);
+    w.status=q>=w.qty?'Done':'WIP';if(q<w.qty)w.qty-=q;
+    closeModal();toast('Build posted: +'+q+' '+item(w.item).sku+' lot '+lotNo+' · components consumed');refresh()}});
+}
+
+/* ---- Job Trackers ---- */
+PAGES.jobs=function(){
+  const mine=curUser.role==='employee';
+  return pageHead('Job Trackers','Floor employees submit production run data. Nothing hits inventory until an admin approves — approval posts a Build automatically.',
+   '<button class="btn p" onclick="newJob()">+ Submit job</button>')+
+  '<div class="flow"><div class="step">Employee submits<span class="s2">qty, lot, shift, machine</span></div><span class="arr">→</span><div class="step hl">Pending Approval<span class="s2">admin review queue</span></div><span class="arr">→</span><div class="step">Approved<span class="s2">Build + inventory posted</span></div></div>'+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Job #',k:'no'},{h:'Date',k:'d'},{h:'Submitted by',k:'by'},{h:'Item',k:'i'},{h:'Qty',k:'q',num:true},{h:'Lot',k:'l'},{h:'Shift',k:'sh'},{h:'Machine',k:'m'},{h:'Notes',k:'n'},{h:'Status',k:'s'},{h:'',k:'a'}],
+   db.jobs.map(j=>({no:'<b>'+j.no+'</b>',d:dstr(j.date),by:esc(userById(j.by).name.split(' (')[0]),i:item(j.item).sku,q:j.qty,l:'<span class="mono">'+esc(j.lot)+'</span>',sh:j.shift,m:(db.machines.find(m=>m.id===j.machine)||{name:'—'}).name.split(' ')[0]+' '+((db.machines.find(m=>m.id===j.machine)||{}).name||'').split(' ').slice(1,2),n:'<span class="sub">'+esc(j.notes)+'</span>',s:sbadge(j.status)+(j.approvedBy?'<div class="sub">by '+esc(userById(j.approvedBy).name.split(' ')[0])+'</div>':''),
+    a:j.status==='Pending Approval'&&isAdmin()?'<button class="btn sm p" onclick="approveJob(\''+j.id+'\')">✓ Approve</button> <button class="btn sm danger" onclick="rejectJob(\''+j.id+'\')">✕</button>':''})))+'</div></div>';
+};
+function newJob(){
+  openModal('Submit Production Job','<div class="frow"><div class="fld"><label>Item produced</label><select id="jb-i">'+selOpts(db.items.filter(i=>['FG','KIT'].includes(i.type)),'id',i=>i.sku+' — '+i.name)+'</select></div><div class="fld"><label>Qty</label><input id="jb-q" type="number" value="20"></div></div>'+
+  '<div class="frow"><div class="fld"><label>Lot #</label><input id="jb-l" type="text" value="'+(25200+Math.floor(Math.random()*90))+'"></div><div class="fld"><label>Shift</label><select id="jb-s"><option>AM</option><option>PM</option></select></div><div class="fld"><label>Machine</label><select id="jb-m">'+selOpts(db.machines,'id','name')+'</select></div></div>'+
+  '<div class="fld"><label>Notes / downtime</label><textarea id="jb-n" rows="2"></textarea></div>',
+  {saveLabel:'Submit for approval',onSave:()=>{
+    db.jobs.unshift({id:uid('JOB'),no:'JT-00'+(++db.counters.job),by:curUser.id,date:todayISO(),item:$('#jb-i').value,qty:+$('#jb-q').value,lot:$('#jb-l').value,shift:$('#jb-s').value,machine:$('#jb-m').value,notes:$('#jb-n').value,status:'Pending Approval'});
+    closeModal();toast('Job submitted — awaiting admin approval');refresh()}});
+}
+function approveJob(id){const j=db.jobs.find(x=>x.id===id);
+  const bom=db.boms[j.item]||[];const comps=[];
+  for(const c of bom){let need=+(c.qty*j.qty).toFixed(4);
+    const rows=invRows(c.item).sort((a,b)=>(lot(a.lot).bestBy||'9999')<(lot(b.lot).bestBy||'9999')?-1:1);
+    const av=rows.reduce((s,r)=>s+r.qty-r.alloc,0);
+    if(av<need){toast('Approved with warning: component '+item(c.item).sku+' short — consumption skipped (adjust later)','err');need=0;continue}
+    for(const r of rows){const t=Math.min(r.qty-r.alloc,need);if(t>0){removeStock(c.item,r.lot,r.bin,t,'BUILD-CONSUME',j.no,'Job approval consumption');comps.push({item:c.item,lot:lot(r.lot).lot,qty:+t.toFixed(2)});need-=t}if(need<=0)break}}
+  let lo=db.lots.find(x=>x.item===j.item&&x.lot===j.lot);
+  if(!lo){lo={id:uid('L'),item:j.item,lot:j.lot,bestBy:daysAgo(-540)};db.lots.push(lo)}
+  addStock(j.item,lo.id,'BIN12',j.qty,'BUILD-OUTPUT',j.no,'From approved job');
+  db.builds.unshift({id:uid('BLD'),no:'BLD-0'+(++db.counters.bld),wo:j.no,item:j.item,qty:j.qty,lotOut:j.lot,date:j.date,by:j.by,status:'Complete',components:comps});
+  j.status='Approved';j.approvedBy=curUser.id;j.approvedAt=nowTs();
+  toast(j.no+' approved → Build posted, +'+j.qty+' '+item(j.item).sku+' into inventory');refresh();
+}
+function rejectJob(id){const j=db.jobs.find(x=>x.id===id);j.status='Rejected';j.approvedBy=curUser.id;toast(j.no+' rejected','err');refresh()}
+/* ---- Item Library ---- */
+let itemFilter='';
+PAGES.items=function(){
+  let list=brandFilter(db.items);
+  if(itemFilter)list=list.filter(i=>i.type===itemFilter);
+  return pageHead('Item Library','Master data: finished goods, kits, raw materials, packaging. Each FG/KIT can carry a BOM for Builds & Kitting.','<button class="btn p" onclick="newItem()">+ New item</button>')+
+  '<div class="filters"><select onchange="itemFilter=this.value;refresh()"><option value="">All types</option>'+['FG','KIT','RM','PM'].map(t=>'<option '+(itemFilter===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'SKU',k:'s'},{h:'Name',k:'n'},{h:'Type',k:'t'},{h:'Case qty',k:'cq',num:true},{h:'On hand',k:'oh',num:true},{h:'Held',k:'al',num:true},{h:'Available',k:'av',num:true},{h:'Cost',k:'c',num:true},{h:'Price',k:'p',num:true},{h:'BOM',k:'b'},{h:'',k:'a'}],
+   list.map(i=>({s:'<b>'+i.sku+'</b><div class="sub mono">'+esc(i.upc)+'</div>',n:esc(i.name),t:badge(i.type,{FG:'teal',KIT:'purple',RM:'amber',PM:'gray'}[i.type]),cq:i.caseQty,oh:onHand(i.id),al:allocated(i.id),
+    av:available(i.id)<i.reorder?'<span style="color:var(--red);font-weight:700">'+available(i.id)+'</span>':available(i.id),c:fmt$(i.cost),p:i.price?fmt$(i.price):'—',
+    b:db.boms[i.id]?'<span class="linklike" onclick="showBOM(\''+i.id+'\')">'+db.boms[i.id].length+' comp.</span>':'—',
+    a:'<button class="btn sm" onclick="showItemHistory(\''+i.id+'\')">History</button>'})))+'</div></div>';
+};
+function showBOM(id){const i=item(id);
+  openModal('BOM — '+i.sku,table([{h:'Component',k:'c'},{h:'Type',k:'t'},{h:'Qty per '+i.uom,k:'q',num:true},{h:'Cost',k:'$',num:true}],
+   db.boms[id].map(c=>({c:item(c.item).sku+' — '+esc(item(c.item).name),t:item(c.item).type,q:c.qty,'$':fmt$(c.qty*item(c.item).cost)})))+
+   '<p style="margin-top:8px;font-weight:700">Rolled-up cost: '+fmt$(db.boms[id].reduce((s,c)=>s+c.qty*item(c.item).cost,0))+'</p>',{saveLabel:null});
+}
+function showItemHistory(id){const i=item(id);
+  const rows=db.ledger.filter(l=>l.item===id).slice(0,40);
+  openModal('Inventory history — '+i.sku,
+  table([{h:'When',k:'w'},{h:'Type',k:'t'},{h:'Qty',k:'q',num:true},{h:'Lot',k:'l'},{h:'Bin',k:'b'},{h:'Ref',k:'r'},{h:'By',k:'u'}],
+   rows.map(l=>({w:tstr(l.ts),t:badge(l.type,l.qty>0?'green':l.qty<0?'red':'blue'),q:(l.qty>0?'+':'')+(+l.qty.toFixed(2)),l:l.lot?lot(l.lot).lot:'—',b:l.bin?bin(l.bin).code:'—',r:esc(l.ref),u:esc(userById(l.user).name.split(' ')[0])})),'No movements recorded yet — receive, build, pick or adjust to see history.'),{saveLabel:null,wide:true});
+}
+function newItem(){
+  openModal('New Item','<div class="frow"><div class="fld"><label>SKU</label><input id="it-s" type="text"></div><div class="fld"><label>Name</label><input id="it-n" type="text"></div></div>'+
+  '<div class="frow"><div class="fld"><label>Type</label><select id="it-t"><option>FG</option><option>KIT</option><option>RM</option><option>PM</option></select></div><div class="fld"><label>Brand</label><select id="it-b">'+selOpts(db.brands.filter(b=>b.id!=='ALL'),'id','name')+'</select></div><div class="fld"><label>Case qty</label><input id="it-cq" type="number" value="1"></div></div>'+
+  '<div class="frow"><div class="fld"><label>Cost $</label><input id="it-c" type="number" step="0.01" value="0"></div><div class="fld"><label>Price $</label><input id="it-p" type="number" step="0.01" value="0"></div><div class="fld"><label>Reorder point</label><input id="it-r" type="number" value="0"></div></div>',
+  {onSave:()=>{if(!$('#it-s').value)return toast('SKU required','err');
+   db.items.push({id:uid('I'),sku:$('#it-s').value,name:$('#it-n').value,type:$('#it-t').value,brand:$('#it-b').value,caseQty:+$('#it-cq').value,uom:'Case',price:+$('#it-p').value,cost:+$('#it-c').value,reorder:+$('#it-r').value,upc:'85'+Math.floor(Math.random()*1e10)});
+   closeModal();toast('Item created');refresh()}});
+}
+
+/* ---- Lots / Barcode Search ---- */
+PAGES.lots=function(){
+  return pageHead('Lots / Barcode Search','Scan or type any SKU, UPC, lot number or bin location. Full lot genealogy for recalls.')+
+  '<div class="scanbox"><input id="lotsearch" type="text" placeholder="Scan / type: SKU, UPC, LOT-25188, or bin LOC-A1-01…" onkeydown="if(event.key===\'Enter\')lotSearchRun()"><div class="sub" style="margin-top:6px">Try: <span class="linklike" onclick="$(\'#lotsearch\').value=\'25188\';lotSearchRun()">25188</span> · <span class="linklike" onclick="$(\'#lotsearch\').value=\'BBW4x10\';lotSearchRun()">BBW4x10</span> · <span class="linklike" onclick="$(\'#lotsearch\').value=\'A1-02\';lotSearchRun()">A1-02</span></div></div>'+
+  '<div id="lotres" style="margin-top:14px">'+lotTable(db.inv.filter(r=>r.qty>0))+'</div>';
+};
+function lotTable(rows){
+  return '<div class="card"><div class="card-h">Stock by lot & location ('+rows.length+' rows)</div><div class="card-b" style="padding:0">'+
+  table([{h:'SKU',k:'s'},{h:'Item',k:'n'},{h:'Lot',k:'l'},{h:'Best by',k:'bb'},{h:'Warehouse',k:'w'},{h:'Bin',k:'b'},{h:'Qty',k:'q',num:true},{h:'Held',k:'a',num:true}],
+   rows.map(r=>{const bb=lot(r.lot).bestBy;const soon=bb&&bb<daysAgo(-60);
+    return {s:'<b>'+item(r.item).sku+'</b>',n:esc(item(r.item).name),l:'<span class="mono">'+esc(lot(r.lot).lot)+'</span>',
+    bb:bb?(soon?'<span style="color:var(--amber);font-weight:600">'+dstr(bb)+' ⚠</span>':dstr(bb)):'—',
+    w:wh(bin(r.bin).wh).code,b:bin(r.bin).code,q:r.qty.toLocaleString(),a:r.alloc||0}}),'No stock found')+'</div></div>';
+}
+function lotSearchRun(){
+  const q=$('#lotsearch').value.trim().toLowerCase().replace(/^lot-/,'').replace(/^loc-/,'');
+  const rows=db.inv.filter(r=>r.qty>0&&(item(r.item).sku.toLowerCase().includes(q)||String(item(r.item).upc).toLowerCase()===q||lot(r.lot).lot.toLowerCase().includes(q)||bin(r.bin).code.toLowerCase().includes(q)));
+  let extra='';
+  const lo=db.lots.find(l=>l.lot.toLowerCase()===q);
+  if(lo){const b=db.builds.find(x=>x.lotOut===lo.lot&&x.item===lo.item);
+    const consumed=db.builds.filter(x=>x.components.some(c=>c.lot===lo.lot));
+    const shipped=db.ledger.filter(l=>l.lot===lo.id&&l.type==='SHIP');
+    extra='<div class="card"><div class="card-h">🧬 Lot genealogy — '+esc(lo.lot)+'</div><div class="card-b">'+
+    (b?'<p>⚒ Produced by <b>'+b.no+'</b> on '+dstr(b.date)+' from '+b.components.length+' component lots ('+b.components.map(c=>item(c.item).sku+':'+c.lot).join(', ')+')</p>':'<p>📥 Received via purchase (no build record).</p>')+
+    (consumed.length?'<p>➡ Consumed by builds: '+consumed.map(c=>c.no+' → '+item(c.item).sku+' lot '+c.lotOut).join('; ')+'</p>':'')+
+    (shipped.length?'<p>🚚 Shipped on orders: '+shipped.map(s=>esc(s.ref)).join(', ')+'</p>':'')+
+    '</div></div>'}
+  $('#lotres').innerHTML=extra+lotTable(rows);
+}
+
+/* ---- Adjustments ---- */
+PAGES.adjust=function(){
+  return pageHead('Adjustments','Cycle counts, damage, shrink. Every adjustment is logged in the item ledger with a reason.','<button class="btn p" onclick="newAdj()">+ New adjustment</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Adj #',k:'no'},{h:'Date',k:'d'},{h:'Item',k:'i'},{h:'Lot',k:'l'},{h:'Bin',k:'b'},{h:'Qty ±',k:'q',num:true},{h:'Reason',k:'r'},{h:'By',k:'u'}],
+   db.adjustments.map(a=>({no:a.no,d:dstr(a.date),i:item(a.item).sku,l:lot(a.lot).lot,b:bin(a.bin).code,q:(a.qty>0?'+':'')+a.qty,r:esc(a.reason),u:esc(userById(a.by).name.split(' ')[0])})),'No adjustments yet.')+'</div></div>';
+};
+function newAdj(){
+  const rows=db.inv.filter(r=>r.qty>0);
+  openModal('Inventory Adjustment',
+  '<div class="fld" style="margin-bottom:10px"><label>Stock row (item · lot · bin)</label><select id="aj-row">'+rows.map((r,ix)=>'<option value="'+ix+'">'+item(r.item).sku+' · lot '+lot(r.lot).lot+' · '+bin(r.bin).code+' · qty '+r.qty+'</option>').join('')+'</select></div>'+
+  '<div class="frow"><div class="fld"><label>Qty change (+/−)</label><input id="aj-q" type="number" value="-1"></div><div class="fld"><label>Reason</label><select id="aj-r"><option>Cycle count</option><option>Damaged</option><option>Expired</option><option>Sample used</option><option>Found stock</option></select></div></div>',
+  {saveLabel:'Post adjustment',onSave:()=>{
+    const r=rows[+$('#aj-row').value];const q=+$('#aj-q').value;if(!q)return toast('Qty required','err');
+    if(q<0&&r.qty+q<0)return toast('Would go negative','err');
+    if(q>0)addStock(r.item,r.lot,r.bin,q,'ADJUST','ADJ','Adjustment: '+$('#aj-r').value);else removeStock(r.item,r.lot,r.bin,-q,'ADJUST','ADJ','Adjustment: '+$('#aj-r').value);
+    db.adjustments.unshift({no:'ADJ-'+(++db.counters.adj),date:todayISO(),item:r.item,lot:r.lot,bin:r.bin,qty:q,reason:$('#aj-r').value,by:curUser.id});
+    closeModal();toast('Adjustment posted');refresh()}});
+}
+
+/* ---- Transfers ---- */
+PAGES.transfers=function(){
+  return pageHead('Transfers','Move stock bin-to-bin (putaway, replenishment) or warehouse-to-warehouse (e.g. CMNE → DOT Foods).','<button class="btn p" onclick="newTransfer()">+ New transfer</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'TR #',k:'no'},{h:'Date',k:'d'},{h:'Item',k:'i'},{h:'Lot',k:'l'},{h:'From',k:'f'},{h:'To',k:'t'},{h:'Qty',k:'q',num:true},{h:'By',k:'u'}],
+   db.transfers.map(t=>({no:t.no,d:dstr(t.date),i:item(t.item).sku,l:lot(t.lot).lot,f:bin(t.from).code+' ('+wh(bin(t.from).wh).code+')',t:bin(t.to).code+' ('+wh(bin(t.to).wh).code+')',q:t.qty,u:esc(userById(t.by).name.split(' ')[0])})),'No transfers yet.')+'</div></div>';
+};
+function newTransfer(){
+  const rows=db.inv.filter(r=>r.qty-r.alloc>0);
+  openModal('Transfer Stock',
+  '<div class="fld" style="margin-bottom:10px"><label>Scan source (item · lot · bin)</label><select id="tr-row">'+rows.map((r,ix)=>'<option value="'+ix+'">'+item(r.item).sku+' · lot '+lot(r.lot).lot+' · '+bin(r.bin).code+' · free '+(r.qty-r.alloc)+'</option>').join('')+'</select></div>'+
+  '<div class="frow"><div class="fld"><label>Qty</label><input id="tr-q" type="number" value="1"></div><div class="fld"><label>Scan destination bin</label><select id="tr-to">'+selOpts(db.bins,'id',b=>'LOC-'+b.code+' — '+wh(b.wh).code)+'</select></div></div>',
+  {saveLabel:'Move stock',onSave:()=>{
+    const r=rows[+$('#tr-row').value];const q=+$('#tr-q').value;const to=$('#tr-to').value;
+    if(q<=0||q>r.qty-r.alloc)return toast('Invalid qty (free: '+(r.qty-r.alloc)+')','err');
+    if(to===r.bin)return toast('Destination = source','err');
+    const no='TR-'+(++db.counters.tr);
+    removeStock(r.item,r.lot,r.bin,q,'TRANSFER-OUT',no,'');addStock(r.item,r.lot,to,q,'TRANSFER-IN',no,'');
+    db.transfers.unshift({no,date:todayISO(),item:r.item,lot:r.lot,from:r.bin,to,qty:q,by:curUser.id});
+    closeModal();toast('Transfer '+no+' posted');refresh()}});
+}
+
+/* ---- Generate Labels ---- */
+PAGES.labels=function(){
+  return pageHead('Generate Labels','Print barcode labels for items (UPC), lots (lot + best-by) and bin locations. In production these render as ZPL for Zebra printers.')+
+  '<div class="grid3">'+
+  '<div class="card"><div class="card-h">Item label</div><div class="card-b"><div class="fld" style="margin-bottom:10px"><label>Item</label>'+itemSel('lb-item')+'</div><button class="btn p" onclick="genLabel(\'item\')">Generate</button></div></div>'+
+  '<div class="card"><div class="card-h">Lot label</div><div class="card-b"><div class="fld" style="margin-bottom:10px"><label>Lot</label><select id="lb-lot">'+selOpts(db.lots,'id',l=>item(l.item).sku+' — lot '+l.lot)+'</select></div><button class="btn p" onclick="genLabel(\'lot\')">Generate</button></div></div>'+
+  '<div class="card"><div class="card-h">Location label</div><div class="card-b"><div class="fld" style="margin-bottom:10px"><label>Bin</label><select id="lb-bin">'+selOpts(db.bins,'id',b=>b.code+' — '+wh(b.wh).code)+'</select></div><button class="btn p" onclick="genLabel(\'bin\')">Generate</button></div></div></div>'+
+  '<div id="lb-out" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px"></div>';
+};
+function genLabel(kind){
+  let code,txt;
+  if(kind==='item'){const i=item($('#lb-item').value);code=i.upc;txt=i.sku+' — '+i.name}
+  if(kind==='lot'){const l=db.lots.find(x=>x.id===$('#lb-lot').value);code='LOT-'+l.lot;txt=item(l.item).sku+' · Best by '+(l.bestBy?dstr(l.bestBy):'N/A')}
+  if(kind==='bin'){const b=db.bins.find(x=>x.id===$('#lb-bin').value);code='LOC-'+b.code;txt=wh(b.wh).name+' · '+b.zone}
+  $('#lb-out').innerHTML+='<div style="text-align:center">'+barcode(code)+'<div class="sub" style="max-width:170px">'+esc(txt)+'</div></div>';
+  toast('Label rendered — sent to print queue 🖨');
+}
+/* ---- Customers ---- */
+PAGES.customers=function(){
+  return pageHead('Customers','Marketplaces, distributors, retailers and direct wholesale accounts.','<button class="btn p" onclick="newCustomer()">+ New customer</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Customer',k:'n'},{h:'Channel',k:'c'},{h:'Type',k:'t'},{h:'Terms',k:'tm'},{h:'EDI',k:'e'},{h:'Open orders',k:'o',num:true},{h:'Open invoices',k:'i',num:true}],
+   db.customers.map(c=>({n:'<b>'+esc(c.name)+'</b>',c:badge(c.channel,{Amazon:'amber',Shopify:'green',TikTok:'purple',EDI:'blue'}[c.channel]||'gray'),t:c.type,tm:c.terms,e:c.edi?badge('EDI ✓','blue'):'—',
+    o:db.orders.filter(o=>o.cust===c.id&&!['Shipped','Cancelled'].includes(o.status)).length,
+    i:db.invoices.filter(i=>i.cust===c.id&&i.status!=='Paid').length})))+'</div></div>';
+};
+function newCustomer(){openModal('New Customer','<div class="frow"><div class="fld"><label>Name</label><input id="c-n" type="text"></div><div class="fld"><label>Channel</label><select id="c-c"><option>Direct</option><option>Amazon</option><option>Shopify</option><option>TikTok</option><option>EDI</option></select></div></div><div class="frow"><div class="fld"><label>Type</label><input id="c-t" type="text" value="Wholesale"></div><div class="fld"><label>Terms</label><select id="c-tm"><option>Net 30</option><option>Net 15</option><option>Net 45</option><option>Net 60</option><option>Prepaid</option></select></div></div>',
+ {onSave:()=>{if(!$('#c-n').value)return toast('Name required','err');db.customers.push({id:uid('C'),name:$('#c-n').value,channel:$('#c-c').value,type:$('#c-t').value,terms:$('#c-tm').value,edi:$('#c-c').value==='EDI'});closeModal();toast('Customer added');refresh()}})}
+
+/* ---- Sales Orders ---- */
+PAGES.sos=function(){
+  return pageHead('Sales Orders','Wholesale / B2B commitments. Converting to fulfillment pushes lines to Order Management; invoicing pulls from shipments.','<button class="btn p" onclick="newSO()">+ New sales order</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'SO #',k:'no'},{h:'Customer',k:'c'},{h:'Date',k:'d'},{h:'Lines',k:'l'},{h:'Value',k:'v',num:true},{h:'Status',k:'s'},{h:'',k:'a'}],
+   db.sos.map(s=>({no:'<b>'+s.no+'</b>',c:esc(cust(s.cust).name),d:dstr(s.date),l:s.lines.map(l=>l.qty+'× '+item(l.item).sku).join('<br>'),
+    v:fmt$(s.lines.reduce((t,l)=>t+l.qty*(item(l.item).price||0),0)),s:sbadge(s.status),
+    a:s.status==='Open'?'<button class="btn sm p" onclick="soToFulfill(\''+s.id+'\')">→ Fulfill</button> <button class="btn sm" onclick="invoiceSO(\''+s.id+'\')">Invoice</button>':''})))+'</div></div>';
+};
+function newSO(){
+  openModal('New Sales Order','<div class="frow"><div class="fld"><label>Customer</label><select id="so-c">'+selOpts(db.customers,'id','name')+'</select></div></div>'+
+  '<div class="frow"><div class="fld"><label>Item</label>'+itemSel('so-i',['FG','KIT'])+'</div><div class="fld"><label>Qty (cases)</label><input id="so-q" type="number" value="10"></div></div>',
+  {saveLabel:'Create SO',onSave:()=>{db.sos.unshift({id:uid('SO'),no:'SO-'+(++db.counters.so),cust:$('#so-c').value,date:todayISO(),status:'Open',lines:[{item:$('#so-i').value,qty:+$('#so-q').value}],notes:''});closeModal();toast('Sales order created');refresh()}});
+}
+function soToFulfill(id){const s=db.sos.find(x=>x.id===id);const c=cust(s.cust);
+  const o={id:uid('ORD'),no:s.no+'-F',channel:c.channel||'Direct',cust:s.cust,brand:'B1',shipTo:{name:c.name,city:'—',st:'—'},date:todayISO(),status:'New',allocs:[],lines:s.lines.map(l=>({item:l.item,qty:l.qty}))};
+  db.orders.unshift(o);s.status='Processing';toast('Pushed to Order Management as '+o.no);go('orders')}
+function invoiceSO(id){const s=db.sos.find(x=>x.id===id);
+  const total=s.lines.reduce((t,l)=>t+l.qty*(item(l.item).price||0),0);
+  db.invoices.unshift({id:uid('INV'),no:'INV-'+(++db.counters.inv),cust:s.cust,date:todayISO(),due:daysAgo(-30),ref:s.no,status:'Unpaid',lines:s.lines.map(l=>({desc:item(l.item).sku+' — '+item(l.item).name,qty:l.qty,price:item(l.item).price})),total});
+  s.status='Closed';toast('Invoice created for '+fmt$(total));go('invoices')}
+
+/* ---- Invoices ---- */
+PAGES.invoices=function(){
+  const open=db.invoices.filter(i=>i.status!=='Paid').reduce((s,i)=>s+i.total,0);
+  return pageHead('Invoices','Auto-created per shipment (D2C/3PL billing) or from sales orders (wholesale). EDI customers receive an 810 automatically.','')+
+  '<div class="kpis"><div class="kpi"><div class="v">'+db.invoices.length+'</div><div class="l">Total invoices</div></div><div class="kpi warn"><div class="v">'+fmt$(open)+'</div><div class="l">Outstanding A/R</div></div></div>'+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Invoice #',k:'no'},{h:'Customer',k:'c'},{h:'Ref',k:'r'},{h:'Date',k:'d'},{h:'Due',k:'du'},{h:'Total',k:'t',num:true},{h:'Status',k:'s'},{h:'',k:'a'}],
+   db.invoices.map(i=>({_click:'openInvoice(\''+i.id+'\')',no:'<b>'+i.no+'</b>',c:esc(cust(i.cust).name),r:esc(i.ref),d:dstr(i.date),du:dstr(i.due),t:fmt$(i.total),s:sbadge(i.status),
+    a:i.status!=='Paid'?'<button class="btn sm p" onclick="event.stopPropagation();payInvoice(\''+i.id+'\')">Record payment</button>':''})))+'</div></div>';
+};
+function openInvoice(id){const i=db.invoices.find(x=>x.id===id);
+  openModal('Invoice '+i.no,'<div class="frow"><div class="fld"><label>Customer</label>'+esc(cust(i.cust).name)+'</div><div class="fld"><label>Ref</label>'+esc(i.ref)+'</div><div class="fld"><label>Status</label>'+sbadge(i.status)+'</div></div>'+
+  table([{h:'Description',k:'d'},{h:'Qty',k:'q',num:true},{h:'Price',k:'p',num:true},{h:'Amount',k:'a',num:true}],i.lines.map(l=>({d:esc(l.desc),q:l.qty,p:fmt$(l.price),a:fmt$(l.qty*l.price)})))+
+  '<p style="text-align:right;font-weight:700;margin-top:10px">Total '+fmt$(i.total)+'</p>'+
+  (cust(i.cust).edi?'<div class="notice">📡 EDI 810 invoice transmitted to '+esc(cust(i.cust).name)+'</div>':''),{saveLabel:null});
+}
+function payInvoice(id){const i=db.invoices.find(x=>x.id===id);
+  db.payments.unshift({id:uid('PAY'),no:'PMT-'+(++db.counters.pay),cust:i.cust,date:todayISO(),method:'ACH',amount:i.total,applied:i.no});
+  i.status='Paid';toast('Payment recorded against '+i.no);refresh()}
+
+/* ---- Sales Receipts ---- */
+PAGES.receipts=function(){
+  return pageHead('Sales Receipts','Point-of-sale style: payment captured at time of sale (samples sold at will-call, marketplace settlements).','<button class="btn p" onclick="newSR()">+ New sales receipt</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Receipt #',k:'no'},{h:'Customer',k:'c'},{h:'Date',k:'d'},{h:'Item',k:'i'},{h:'Qty',k:'q',num:true},{h:'Amount',k:'a',num:true},{h:'Method',k:'m'}],
+   db.salesReceipts.map(r=>({no:r.no,c:esc(cust(r.cust).name),d:dstr(r.date),i:item(r.item).sku,q:r.qty,a:fmt$(r.amount),m:r.method})),'No sales receipts yet.')+'</div></div>';
+};
+function newSR(){
+  openModal('New Sales Receipt','<div class="frow"><div class="fld"><label>Customer</label><select id="sr-c">'+selOpts(db.customers,'id','name')+'</select></div><div class="fld"><label>Item</label>'+itemSel('sr-i',['FG','KIT'])+'</div></div>'+
+  '<div class="frow"><div class="fld"><label>Qty</label><input id="sr-q" type="number" value="1"></div><div class="fld"><label>Method</label><select id="sr-m"><option>Card</option><option>Cash</option><option>ACH</option><option>Marketplace settlement</option></select></div></div>',
+  {saveLabel:'Capture & deduct stock',onSave:()=>{
+    const iid=$('#sr-i').value,q=+$('#sr-q').value;
+    if(available(iid)<q)return toast('Not enough available stock','err');
+    let need=q;for(const r of invRows(iid)){const t=Math.min(r.qty-r.alloc,need);if(t>0){removeStock(iid,r.lot,r.bin,t,'SALE','SR','Sales receipt');need-=t}if(!need)break}
+    db.salesReceipts.unshift({no:'SR-'+(++db.counters.sr),cust:$('#sr-c').value,date:todayISO(),item:iid,qty:q,amount:q*(item(iid).price||0),method:$('#sr-m').value});
+    closeModal();toast('Sales receipt captured');refresh()}});
+}
+
+/* ---- Payments ---- */
+PAGES.payments=function(){
+  return pageHead('Payments','Cash application against invoices.')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Payment #',k:'no'},{h:'Customer',k:'c'},{h:'Date',k:'d'},{h:'Method',k:'m'},{h:'Amount',k:'a',num:true},{h:'Applied to',k:'ap'}],
+   db.payments.map(p=>({no:p.no,c:esc(cust(p.cust).name),d:dstr(p.date),m:p.method,a:fmt$(p.amount),ap:esc(p.applied)})),'No payments yet.')+'</div></div>';
+};
+
+/* ---- Picklists ---- */
+PAGES.picklist=function(){
+  const ready=db.orders.filter(o=>o.status==='Allocated');
+  return pageHead('Picklists','Wave-pick allocated orders. Each line tells the picker the bin & lot (FEFO). Scan bin ▸ scan item ▸ confirm qty.',
+   ready.length?'<button class="btn p" onclick="makeWave()">⚡ Create wave from '+ready.length+' allocated order'+(ready.length>1?'s':'')+'</button>':'')+
+  db.picklists.map(pl=>{
+    const lines=pl.lines;const done=lines.filter(l=>l.picked).length;
+    return '<div class="card"><div class="card-h">'+pl.no+' · '+pl.orders.length+' order(s) · assigned '+esc(userById(pl.assignedTo).name.split(' (')[0])+' '+sbadge(pl.status)+'<div class="spacer"></div>'+Math.round(done/lines.length*100)+'% picked</div><div class="card-b" style="padding:0">'+
+    table([{h:'Pick',k:'p'},{h:'Bin ▸',k:'b'},{h:'SKU',k:'s'},{h:'Lot',k:'l'},{h:'Qty',k:'q',num:true},{h:'For order',k:'o'}],
+     lines.map((l,ix)=>({p:l.picked?'<span class="b green">✓ picked</span>':(pl.status!=='Done'?'<button class="btn sm p" onclick="scanPick(\''+pl.id+'\','+ix+')">📷 Scan pick</button>':'—'),
+      b:'<b>'+bin(l.bin).code+'</b>',s:item(l.item).sku,l:'<span class="mono">'+lot(l.lot).lot+'</span>',q:l.qty,o:esc(l.order)})))+'</div></div>'}).join('')||'<div class="empty card" style="padding:30px">No picklists. Allocate orders then create a wave.</div>';
+};
+function makeWave(){
+  const ready=db.orders.filter(o=>o.status==='Allocated');if(!ready.length)return;
+  const lines=[];ready.forEach(o=>{o.allocs.forEach(a=>lines.push({order:o.no,orderId:o.id,item:a.item,lot:a.lot,bin:a.bin,qty:a.qty,picked:false}))});
+  lines.sort((a,b)=>bin(a.bin).code<bin(b.bin).code?-1:1);
+  const pl={id:uid('PL'),no:'PICK-'+(++db.counters.pick),orders:ready.map(o=>o.id),lines,status:'Open',assignedTo:curUser.role==='employee'?curUser.id:'U2',date:todayISO()};
+  db.picklists.unshift(pl);ready.forEach(o=>o.status='Picking');
+  toast('Wave '+pl.no+' created — '+lines.length+' pick lines, sorted by bin path');refresh();
+}
+function makePicklist(orderId){const o=db.orders.find(x=>x.id===orderId);
+  const lines=o.allocs.map(a=>({order:o.no,orderId:o.id,item:a.item,lot:a.lot,bin:a.bin,qty:a.qty,picked:false})).sort((a,b)=>bin(a.bin).code<bin(b.bin).code?-1:1);
+  const pl={id:uid('PL'),no:'PICK-'+(++db.counters.pick),orders:[o.id],lines,status:'Open',assignedTo:curUser.role==='employee'?curUser.id:'U2',date:todayISO()};
+  db.picklists.unshift(pl);o.status='Picking';closeModal();toast('Picklist '+pl.no+' created');location.hash.includes('orderdetail')?refresh():go('picklist')}
+function doPick(pl,ix,sb,si,q){
+  const l=pl.lines[ix];
+  sb=String(sb||'').trim().toUpperCase().replace(/^LOC-/,'');si=String(si||'').trim().toUpperCase().replace(/^LOT-/,'');
+  if(sb!==bin(l.bin).code.toUpperCase())return 'Wrong bin: scanned "'+(sb||'(empty)')+'" — expected '+bin(l.bin).code;
+  if(si!==item(l.item).sku.toUpperCase()&&si!==lot(l.lot).lot.toUpperCase()&&si!==String(item(l.item).upc))return 'Wrong item: scanned "'+(si||'(empty)')+'" — expected '+item(l.item).sku;
+  if(+q!==l.qty)return 'Qty mismatch — expected '+l.qty;
+  const r=db.inv.find(x=>x.item===l.item&&x.lot===l.lot&&x.bin===l.bin);
+  if(r){r.alloc=Math.max(0,r.alloc-l.qty);removeStock(l.item,l.lot,l.bin,l.qty,'PICK',l.order,'Picked to pack station');addStock(l.item,l.lot,'BIN9',l.qty,'PICK-STAGE',l.order,'At pack station')}
+  l.picked=true;l.pickedBy=curUser.id;l.pickedAt=nowTs();
+  if(pl.lines.every(x=>x.picked))pl.status='Done';
+  pl.orders.forEach(oid=>{const o=db.orders.find(x=>x.id===oid);const mine=pl.lines.filter(x=>x.orderId===oid);
+    if(o&&o.status==='Picking'&&mine.length&&mine.every(x=>x.picked)){o.status='Picked';toast(o.no+' fully picked — ready to pack')}});
+  return null;
+}
+function scanPick(plId,ix){
+  const pl=db.picklists.find(x=>x.id===plId);const l=pl.lines[ix];
+  openModal('Scan Pick — '+item(l.item).sku,
+  '<div class="scanbox"><div class="fld"><label>Step 1 — scan bin location</label><input id="sp-bin" type="text" placeholder="Expected: LOC-'+bin(l.bin).code+'" onkeydown="if(event.key===\'Enter\')$(\'#sp-item\').focus()"></div>'+
+  '<div class="fld" style="margin-top:8px"><label>Step 2 — scan item / lot barcode</label><input id="sp-item" type="text" placeholder="Expected: '+item(l.item).sku+' or LOT-'+lot(l.lot).lot+'"></div>'+
+  '<div class="fld" style="margin-top:8px"><label>Qty</label><input id="sp-q" type="number" value="'+l.qty+'"></div>'+
+  '<div class="scan-log" id="sp-log">› Scanner ready…</div></div>',
+  {saveLabel:'Confirm pick',onSave:()=>{
+    const err=doPick(pl,ix,$('#sp-bin').value,$('#sp-item').value,$('#sp-q').value);
+    if(err){$('#sp-log').innerHTML+='<div class="bad">✗ '+esc(err)+'</div>';return}
+    if(pl.status==='Done')toast(pl.no+' complete');else toast('Pick confirmed ✓');
+    closeModal();refresh()}});
+}
+/* ---- Pack & Ship ---- */
+PAGES.packship=function(){
+  const picked=db.orders.filter(o=>['Picked','Packed'].includes(o.status));
+  return pageHead('Pack & Ship Station','Verify-scan each item into the carton, choose box, buy the label (EasyPost/ShipStation rate-shop), print & hand to carrier. Shipping auto-creates the invoice + shipment log.')+
+  (picked.length?'':'<div class="empty card" style="padding:30px">No orders at pack station. Complete a picklist first.</div>')+
+  picked.map(o=>'<div class="card"><div class="card-h">'+esc(o.no)+' — '+esc(o.shipTo.name)+' ('+esc(o.shipTo.city)+', '+esc(o.shipTo.st)+') '+sbadge(o.status)+'</div><div class="card-b">'+
+   '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">'+o.lines.map(l=>'<span class="tag">'+l.qty+'× '+item(l.item).sku+'</span>').join('')+'</div>'+
+   (o.status==='Picked'?'<div class="frow"><div class="fld"><label>Verify scan (type SKUs, comma-sep)</label><input id="pk-scan-'+o.id+'" type="text" placeholder="'+o.lines.map(l=>item(l.item).sku).join(', ')+'"></div>'+
+    '<div class="fld"><label>Box</label><select id="pk-box-'+o.id+'"><option>8 x 6 x 4</option><option>9 x 7 x 5</option><option>12 x 10 x 6</option><option>Pallet (LTL)</option></select></div>'+
+    '<div class="fld"><label>Weight (lb)</label><input id="pk-w-'+o.id+'" type="number" value="'+Math.max(1,o.lines.reduce((s,l)=>s+l.qty,0))+'"></div></div>'+
+    '<button class="btn p" onclick="packOrder(\''+o.id+'\')">📦 Pack carton</button>':
+    '<button class="btn p" onclick="shipOrder(\''+o.id+'\')">🏷 Buy label & ship</button> <span class="sub">Rate-shops USPS / UPS / FedEx via EasyPost</span>')+
+   '</div></div>').join('');
+};
+function packOrder(id){
+  const o=db.orders.find(x=>x.id===id);
+  const scan=($('#pk-scan-'+id).value||'').toUpperCase().split(',').map(s=>s.trim()).filter(Boolean);
+  const need=o.lines.map(l=>item(l.item).sku.toUpperCase());
+  const missing=need.filter(s=>!scan.includes(s));
+  if(missing.length)return toast('Verify scan failed — missing: '+missing.join(', '),'err');
+  o.box=$('#pk-box-'+id).value;o.weight=+$('#pk-w-'+id).value;o.pkgCount=+(($('#pk-ct-'+id)||{}).value||1);o.status='Packed';
+  toast(o.no+' packed in '+o.box+' — ready for label');refresh();
+}
+function shipOrder(id){
+  const o=db.orders.find(x=>x.id===id);
+  const rates=[{c:'USPS',s:'Ground Advantage',p:6.26+Math.random()*2},{c:'UPS',s:'UPS® Ground',p:7.74+Math.random()*2},{c:'FedEx',s:'Home Delivery',p:8.1+Math.random()*2}].sort((a,b)=>a.p-b.p);
+  openModal('Buy Label — '+o.no,
+  '<p style="margin-bottom:10px">EasyPost returned '+rates.length+' rates (cheapest preselected):</p>'+
+  rates.map((r,ix)=>'<label style="display:flex;gap:10px;align-items:center;padding:8px;border:1.5px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer"><input type="radio" name="rate" value="'+ix+'" '+(ix===0?'checked':'')+'> <b>'+r.c+'</b> '+r.s+'<span style="margin-left:auto;font-weight:700">'+fmt$(r.p)+'</span></label>').join(''),
+  {saveLabel:'Purchase label & ship',onSave:()=>{
+    const r=rates[+document.querySelector('input[name=rate]:checked').value];
+    const trk=r.c==='USPS'?'93'+Math.floor(Math.random()*1e18):r.c==='UPS'?'1ZK1076C0'+Math.floor(Math.random()*1e9):'7'+Math.floor(Math.random()*1e11);
+    // consume packed stock from pack station
+    o.lines.forEach(l=>{let need=l.qty;const rows=db.inv.filter(x=>x.item===l.item&&x.bin==='BIN9'&&x.qty>0);
+      for(const row of rows){const t=Math.min(row.qty,need);if(t>0){removeStock(l.item,row.lot,row.bin,t,'SHIP',o.no,'Shipped '+r.c);need-=t}if(!need)break}
+      if(need>0){const rows2=invRows(l.item);for(const row of rows2){const t=Math.min(row.qty,need);if(t>0){row.alloc=Math.max(0,row.alloc-t);removeStock(l.item,row.lot,row.bin,t,'SHIP',o.no,'Shipped '+r.c);need-=t}if(!need)break}}});
+    o.status='Shipped';o.tracking=String(trk);o.carrier=r.c;o.service=r.s;o.shipDate=todayISO();o.cost=+r.p.toFixed(2);o.allocs=[];
+    db.shipments.unshift({id:uid('SHP'),order:o.id,no:'SHP-'+(++db.counters.ship),date:todayISO(),carrier:r.c,service:r.s,tracking:String(trk),cost:+r.p.toFixed(2),status:'Label Created',step:0,events:[{ts:nowTs(),desc:'Label created — '+r.c+' '+r.s}],label:'Active'});
+    db.shipLogs.unshift({ts:nowTs(),order:o.no,carrier:r.c,tracking:String(trk),by:curUser.id,pallets:0,cartons:1});
+    // auto-invoice
+    const c=cust(o.cust);const isD2C=['Amazon','Shopify','TikTok'].includes(o.channel);
+    const lines=o.lines.map(l=>({desc:item(l.item).sku+' — '+item(l.item).name,qty:l.qty,price:item(l.item).price||0}));
+    if(isD2C){const units=o.lines.reduce((s,l)=>s+l.qty,0);lines.push({desc:'3PL Pick & Pack fee',qty:units,price:units>=40?0.09:0.25});lines.push({desc:'Postage — '+r.c+' '+r.s,qty:1,price:+r.p.toFixed(2)})}
+    const total=+lines.reduce((s,l)=>s+l.qty*l.price,0).toFixed(2);
+    db.invoices.unshift({id:uid('INV'),no:'INV-'+(++db.counters.inv),cust:o.cust,date:todayISO(),due:daysAgo(-30),ref:o.no,status:'Unpaid',lines,total});
+    if(c.edi){db.ediDocs.unshift({ts:nowTs(),partner:c.name,doc:'856 ASN',ref:o.poNo||o.no,dir:'OUT',status:'Sent — pallet SSCC included'});db.ediDocs.unshift({ts:nowTs(),partner:c.name,doc:'810 Invoice',ref:o.poNo||o.no,dir:'OUT',status:'Sent'})}
+    closeModal();toast('🚚 '+o.no+' shipped '+r.c+' '+String(trk).slice(0,14)+'… — invoice auto-created'+(c.edi?' + EDI 856/810 sent':''));refresh()}});
+}
+
+/* ---- Kitting ---- */
+PAGES.kitting=function(){
+  const kits=db.items.filter(i=>i.type==='KIT');
+  return pageHead('Kitting','Pre-build kits/bundles (e.g. TikTok Sampler Pack) from component units so channel orders ship as one scan.')+
+  '<div class="card"><div class="card-h">Assemble kits</div><div class="card-b">'+
+  '<div class="frow"><div class="fld"><label>Kit</label><select id="kt-i">'+selOpts(kits,'id',i=>i.sku+' — '+i.name)+'</select></div><div class="fld"><label>Qty to assemble</label><input id="kt-q" type="number" value="10"></div></div>'+
+  '<button class="btn p" onclick="assembleKit()">🎁 Assemble</button></div></div>'+
+  '<div class="card"><div class="card-h">Kit BOMs</div><div class="card-b" style="padding:0">'+
+  table([{h:'Kit',k:'k'},{h:'Components',k:'c'},{h:'Kits on hand',k:'oh',num:true},{h:'Max assemblable now',k:'mx',num:true}],
+   kits.map(k=>{const bom=db.boms[k.id]||[];const mx=bom.length?Math.min(...bom.map(c=>Math.floor(available(c.item)/c.qty))):0;
+    return {k:'<b>'+k.sku+'</b>',c:bom.map(c=>c.qty+'× '+item(c.item).sku).join(', ')||'—',oh:onHand(k.id),mx}}))+'</div></div>';
+};
+function assembleKit(){
+  const kid=$('#kt-i').value,q=+$('#kt-q').value;const bom=db.boms[kid]||[];
+  if(!bom.length)return toast('Kit has no BOM','err');
+  for(const c of bom){if(available(c.item)<c.qty*q)return toast('Short '+item(c.item).sku,'err')}
+  const comps=[];
+  bom.forEach(c=>{let need=c.qty*q;for(const r of invRows(c.item)){const t=Math.min(r.qty-r.alloc,need);if(t>0){removeStock(c.item,r.lot,r.bin,t,'KIT-CONSUME','KIT','Kitting');comps.push({item:c.item,lot:lot(r.lot).lot,qty:t});need-=t}if(!need)break}});
+  let lo=db.lots.find(x=>x.item===kid&&x.lot==='KIT-'+todayISO());
+  if(!lo){lo={id:uid('L'),item:kid,lot:'KIT-'+todayISO(),bestBy:daysAgo(-365)};db.lots.push(lo)}
+  addStock(kid,lo.id,'BIN2',q,'KIT-OUTPUT','KIT','Assembled');
+  db.builds.unshift({id:uid('BLD'),no:'BLD-0'+(++db.counters.bld),wo:'Kitting',item:kid,qty:q,lotOut:lo.lot,date:todayISO(),by:curUser.id,status:'Complete',components:comps});
+  toast(q+' kits assembled → pick face');refresh();
+}
+
+/* ---- Shipments ---- */
+let shpFilter={st:'',q:'',car:''};
+PAGES.shipments=function(){
+  const today=todayISO();
+  let list=db.shipments;
+  if(shpFilter.st==='Ready to Ship')list=[];
+  else if(shpFilter.st==='Out for Delivery')list=list.filter(s=>s.status==='In Transit'&&(s.step||0)>=3);
+  else if(shpFilter.st)list=list.filter(s=>s.status===shpFilter.st);
+  if(shpFilter.car)list=list.filter(s=>s.carrier===shpFilter.car);
+  if(shpFilter.q){const q=shpFilter.q.toLowerCase();list=list.filter(s=>{const o=db.orders.find(x=>x.id===s.order)||{};return s.tracking.toLowerCase().includes(q)||s.no.toLowerCase().includes(q)||(o.no||'').toLowerCase().includes(q)||((o.shipTo||{}).name||'').toLowerCase().includes(q)})}
+  const ready=db.orders.filter(o=>o.status==='Packed').length;
+  const ofd=db.shipments.filter(s=>s.status==='In Transit'&&(s.step||0)>=3).length;
+  const cnt=st=>db.shipments.filter(s=>s.status===st).length;
+  const carriers=[...new Set(db.shipments.map(s=>s.carrier))];
+  const carColors={UPS:'#b45309',USPS:'#1d4ed8',FedEx:'#7e22ce',DHL:'#b91c1c'};
+  const shippedToday=db.shipments.filter(s=>s.date===today).length;
+  const pendToday=db.orders.filter(o=>o.date===today&&o.status!=='Shipped').length;
+  const totCost=db.shipments.filter(s=>s.label==='Active').reduce((s2,s)=>s2+(s.cost||0),0);
+  return pageHead('Shipments','Track every parcel & pallet. '+shippedToday+' shipped today · '+pendToday+' still pending from today\'s orders. Carrier webhooks (EasyPost) update status live.',
+   '<button class="btn" onclick="advanceTracking()">↻ Poll carrier tracking</button>')+
+  '<div class="kpis">'+
+  kpiIco(ready,'Ready to Ship','📦','#1d4ed8','',"go('fulfillment')")+
+  kpiIco(cnt('In Transit'),'In Transit','🚚','#b45309','',"shpFilter.st=shpFilter.st==='In Transit'?'':'In Transit';refresh()",shpFilter.st==='In Transit')+
+  kpiIco(ofd,'Out for Delivery','🛻','#7e22ce','',"shpFilter.st=shpFilter.st==='Out for Delivery'?'':'Out for Delivery';refresh()",shpFilter.st==='Out for Delivery')+
+  kpiIco(cnt('Delivered'),'Delivered','✅','#15803d','',"shpFilter.st=shpFilter.st==='Delivered'?'':'Delivered';refresh()",shpFilter.st==='Delivered')+
+  kpiIco(cnt('Exception'),'Exception','⚠','#b91c1c','',"shpFilter.st=shpFilter.st==='Exception'?'':'Exception';refresh()",shpFilter.st==='Exception')+
+  '</div>'+
+  '<div class="filters"><input type="text" placeholder="Search shipment #, order #, tracking #, customer…" value="'+esc(shpFilter.q)+'" onkeydown="if(event.key===\'Enter\'){shpFilter.q=this.value;refresh()}">'+
+  '<select onchange="shpFilter.car=this.value;refresh()"><option value="">All carriers</option>'+carriers.map(c=>'<option '+(shpFilter.car===c?'selected':'')+'>'+c+'</option>').join('')+'</select>'+
+  (shpFilter.st||shpFilter.q||shpFilter.car?'<button class="btn sm" onclick="shpFilter={st:\'\',q:\'\',car:\'\'};refresh()">✕ Clear</button>':'')+'</div>'+
+  '<div class="layout"><div><div class="card"><div class="card-h">Shipments ('+list.length+')</div><div class="card-b" style="padding:0">'+
+  table([{h:'Ship #',k:'no'},{h:'Order / customer',k:'o'},{h:'Carrier',k:'c'},{h:'Tracking #',k:'t'},{h:'Ship date',k:'d'},{h:'Delivered',k:'dd'},{h:'Cost',k:'$',num:true},{h:'Status',k:'s'},{h:'',k:'a'}],
+   list.map(s=>{const o=db.orders.find(x=>x.id===s.order)||{};
+    return {no:'<b>'+s.no+'</b>',o:esc(o.no||'—')+'<div class="sub">'+esc(o.shipTo?o.shipTo.name:'')+'</div>',
+    c:badge(s.carrier,{UPS:'amber',USPS:'blue',FedEx:'purple'}[s.carrier]||'gray')+'<div class="sub">'+esc(s.service||'')+'</div>',
+    t:'<span class="mono">'+esc(s.tracking)+'</span><span class="copyb" onclick="copyTrack(\''+esc(s.tracking)+'\')" title="Copy">⧉</span>',
+    d:dstr(s.date),dd:o.deliveredDate?dstr(o.deliveredDate):(s.status==='Delivered'?dstr(today):'—'),'$':fmt$(s.cost),
+    s:badge(s.label==='Voided'?'Voided':(s.status==='In Transit'&&(s.step||0)>=3?'Out for Delivery':s.status),s.label==='Voided'?'gray':{'Label Created':'gray','In Transit':'blue','Delivered':'green','Exception':'red'}[s.status]||'gray'),
+    a:(o.id?'<button class="btn sm" onclick="openOrder(\''+o.id+'\')">👁</button> ':'')+(s.label==='Active'&&s.status==='Label Created'?'<button class="btn sm danger" onclick="voidLabel(\''+s.id+'\')">Void</button>':'')}}),'No shipments match')+'</div></div></div>'+
+  '<div>'+
+  '<div class="card"><div class="card-h">Shipment summary</div><div class="card-b" style="font-size:12.5px">'+
+   [['Total shipments',db.shipments.length],['In transit',cnt('In Transit')],['Delivered',cnt('Delivered')],['Exceptions',cnt('Exception')],['Total shipping cost','<b>'+fmt$(totCost)+'</b>']].map(r=>'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eef1f4">'+r[0]+'<span>'+r[1]+'</span></div>').join('')+'</div></div>'+
+  '<div class="card"><div class="card-h">Carrier performance</div><div class="card-b">'+
+   donut(carriers.map(c=>({l:c,v:db.shipments.filter(s=>s.carrier===c).length,c:carColors[c]||'#68778a'})),db.shipments.length,'parcels')+'</div></div>'+
+  '<div class="card"><div class="card-h">Quick actions</div><div class="card-b">'+
+   '<button class="btn qact" onclick="toast(\'Packing slips sent to printer 🖨\')">🖨 Print packing slips</button>'+
+   '<button class="btn qact" onclick="toast(\'Labels sent to Zebra printer 🖨\')">🏷 Print shipping labels</button>'+
+   '<button class="btn qact" onclick="toast(\'End-of-day manifest (SCAN form) generated ✓\')">📄 Print manifest</button>'+
+   '<button class="btn qact" onclick="toast(\'Shipments exported to CSV ✓\')">⬇ Export shipments</button>'+
+  '</div></div></div></div>';
+};
+function advanceTracking(){
+  let n=0;
+  db.shipments.forEach(s=>{
+    if(s.label==='Voided'||s.status==='Delivered')return;
+    s.events=s.events||[{ts:s.date+'T09:00:00',desc:'Label created — '+s.carrier}];
+    s.step=(s.step||0)+1;n++;
+    const seq=['Picked up by '+s.carrier+' — origin scan','In transit — departed regional hub','Out for delivery','Delivered — left at front door'];
+    s.events.push({ts:nowTs(),desc:seq[Math.min(s.step-1,3)]});
+    s.status=s.step>=4?'Delivered':'In Transit';
+    if(s.status==='Delivered'){const o=db.orders.find(x=>x.id===s.order);if(o)o.deliveredDate=todayISO()}
+  });
+  toast('Carrier webhooks processed — '+n+' tracking update'+(n===1?'':'s'));refresh();
+}
+function voidLabel(id){const s=db.shipments.find(x=>x.id===id);s.label='Voided';s.status='Exception';toast('Label voided — refund requested from carrier');refresh()}
+/* ---- Daily Ops Checklist / Tasks ---- */
+let taskDate=null;
+PAGES.tasks=function(){
+  const date=taskDate||todayISO();
+  if(!db.taskRuns[date])db.taskRuns[date]={};
+  const applicable=db.checklists.filter(c=>curBrand==='ALL'||c.brand==='ALL'||c.brand===curBrand);
+  const dates=Object.keys(db.taskRuns).sort().reverse();
+  return pageHead('Daily Operations Checklist','Compliance checklists with date-by-date history. Every check-off records who did it and when. Build custom checklists per customer in the Checklist Builder.')+
+  '<div class="filters"><div class="fld"><label>Date</label><input type="date" value="'+date+'" onchange="taskDate=this.value;refresh()"></div>'+
+  '<div class="fld"><label>History</label><select onchange="taskDate=this.value;refresh()"><option value="">Jump to date…</option>'+dates.map(d=>'<option value="'+d+'"'+(d===date?' selected':'')+'>'+dstr(d)+' — '+histSummary(d)+'</option>').join('')+'</select></div></div>'+
+  applicable.map(cl=>{
+    const run=db.taskRuns[date][cl.id]||cl.items.map(()=>null);
+    const done=run.filter(x=>x&&x.done).length;
+    return '<div class="card"><div class="card-h">'+esc(cl.name)+' <span class="tag">'+cl.freq+'</span><span class="tag">'+(cl.brand==='ALL'?'All brands':db.brands.find(b=>b.id===cl.brand).name)+'</span><div class="spacer"></div>'+done+'/'+cl.items.length+' '+progress(done/cl.items.length*100)+'</div><div class="card-b">'+
+    cl.items.map((it,ix)=>{const st=run[ix];
+      return '<div class="chk-item'+(st&&st.done?' done':'')+'"><input type="checkbox" '+(st&&st.done?'checked':'')+' '+(isBrand()?'disabled':'')+' onchange="checkTask(\''+date+'\',\''+cl.id+'\','+ix+',this.checked)"><span class="txt">'+esc(it)+'</span>'+
+      (st&&st.done?'<span class="who">✓ '+esc(userById(st.by).name.split(' (')[0])+' · '+tstr(st.at)+'</span>':'<span class="who">—</span>')+'</div>'}).join('')+
+    '</div></div>'}).join('');
+};
+function histSummary(d){const runs=db.taskRuns[d];let done=0,tot=0;Object.entries(runs).forEach(([cid,run])=>{const cl=db.checklists.find(c=>c.id===cid);if(!cl)return;tot+=cl.items.length;done+=run.filter(x=>x&&x.done).length});return done+'/'+tot+' done'}
+function checkTask(date,clId,ix,val){
+  const cl=db.checklists.find(c=>c.id===clId);
+  if(!db.taskRuns[date])db.taskRuns[date]={};
+  if(!db.taskRuns[date][clId])db.taskRuns[date][clId]=cl.items.map(()=>null);
+  db.taskRuns[date][clId][ix]=val?{done:true,by:curUser.id,at:nowTs()}:null;
+  save();refresh();
+}
+/* ---- Checklist Builder ---- */
+PAGES.chkbuilder=function(){
+  return pageHead('Checklist Builder','Create any compliance checklist for any customer or brand — SQF, GMP, retailer routing guides, allergen changeover…','<button class="btn p" onclick="newChecklist()">+ New checklist</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Checklist',k:'n'},{h:'Frequency',k:'f'},{h:'Scope',k:'b'},{h:'Items',k:'i',num:true},{h:'',k:'a'}],
+   db.checklists.map(c=>({n:'<b>'+esc(c.name)+'</b>',f:c.freq,b:c.brand==='ALL'?'All brands':esc((db.brands.find(b=>b.id===c.brand)||{}).name),i:c.items.length,
+    a:'<button class="btn sm" onclick="editChecklist(\''+c.id+'\')">Edit</button> <button class="btn sm danger" onclick="delChecklist(\''+c.id+'\')">Delete</button>'})))+'</div></div>';
+};
+function newChecklist(){editChecklist(null)}
+function editChecklist(id){
+  const c=id?db.checklists.find(x=>x.id===id):{name:'',freq:'Daily',brand:'ALL',items:['']};
+  openModal(id?'Edit Checklist':'New Checklist',
+  '<div class="frow"><div class="fld"><label>Name</label><input id="cb-n" type="text" value="'+esc(c.name)+'"></div>'+
+  '<div class="fld"><label>Frequency</label><select id="cb-f">'+['Daily','Weekly','Monthly','Per Shipment','Per Receipt','Per Build'].map(f=>'<option'+(c.freq===f?' selected':'')+'>'+f+'</option>').join('')+'</select></div>'+
+  '<div class="fld"><label>Scope</label><select id="cb-b">'+selOpts(db.brands,'id','name',c.brand)+'</select></div></div>'+
+  '<div class="fld"><label>Checklist items (one per line)</label><textarea id="cb-items" rows="8">'+esc(c.items.join('\n'))+'</textarea></div>',
+  {onSave:()=>{
+    const items=$('#cb-items').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    if(!$('#cb-n').value||!items.length)return toast('Name and at least one item required','err');
+    if(id){c.name=$('#cb-n').value;c.freq=$('#cb-f').value;c.brand=$('#cb-b').value;c.items=items}
+    else db.checklists.push({id:uid('CL'),name:$('#cb-n').value,freq:$('#cb-f').value,brand:$('#cb-b').value,items});
+    closeModal();toast('Checklist saved — appears in Daily Ops for its scope');refresh()}});
+}
+function delChecklist(id){db.checklists=db.checklists.filter(c=>c.id!==id);toast('Checklist deleted');refresh()}
+
+/* ---- Visitor Sign-in ---- */
+PAGES.visitors=function(){
+  return pageHead('Visitor Sign-in','Food-safety requirement: every visitor logged with host, purpose and badge. Sign-out closes the record.','<button class="btn p" onclick="signInVisitor()">+ Sign in visitor</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'In',k:'i'},{h:'Out',k:'o'},{h:'Name',k:'n'},{h:'Company',k:'c'},{h:'Host',k:'h'},{h:'Purpose',k:'p'},{h:'Badge',k:'b'},{h:'',k:'a'}],
+   db.visitors.map((v,ix)=>({i:tstr(v.ts),o:v.out?tstr(v.out):badge('On site','amber'),n:'<b>'+esc(v.name)+'</b>',c:esc(v.company),h:esc(v.host),p:esc(v.purpose),b:v.badge,
+    a:!v.out?'<button class="btn sm" onclick="signOutVisitor('+ix+')">Sign out</button>':''})))+'</div></div>';
+};
+function signInVisitor(){
+  openModal('Visitor Sign-in','<div class="frow"><div class="fld"><label>Name</label><input id="vs-n" type="text"></div><div class="fld"><label>Company</label><input id="vs-c" type="text"></div></div>'+
+  '<div class="frow"><div class="fld"><label>Host</label><input id="vs-h" type="text" value="'+esc(curUser.name.split(' (')[0])+'"></div><div class="fld"><label>Purpose</label><select id="vs-p"><option>Delivery</option><option>Audit</option><option>Maintenance</option><option>Sales visit</option><option>Interview</option></select></div></div>'+
+  '<p class="sub">✓ Visitor agreed to GMP rules: no jewelry, no food/drink on floor, hairnet in production zones.</p>',
+  {saveLabel:'Sign in & print badge',onSave:()=>{if(!$('#vs-n').value)return toast('Name required','err');
+   db.visitors.unshift({ts:nowTs(),out:null,name:$('#vs-n').value,company:$('#vs-c').value,host:$('#vs-h').value,purpose:$('#vs-p').value,badge:'V-'+Math.floor(Math.random()*900+100)});
+   closeModal();toast('Badge printed 🪪');refresh()}});
+}
+function signOutVisitor(ix){db.visitors[ix].out=nowTs();toast('Visitor signed out');refresh()}
+
+/* ---- Equipment & Machinery ---- */
+function assetPage(title,listKey,desc){
+  const list=db[listKey];
+  return pageHead(title,desc,'<button class="btn p" onclick="newAsset(\''+listKey+'\')">+ Add</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Asset',k:'n'},{h:'Serial',k:'sn'},{h:'Status',k:'s'},{h:'Last service',k:'ls'},{h:'Next service',k:'ns'},{h:'',k:'a'}],
+   list.map(a=>{const due=a.nextService<=todayISO();
+    return {n:'<b>'+esc(a.name)+'</b>',sn:'<span class="mono">'+esc(a.serial)+'</span>',s:sbadge(a.status.startsWith('Down')?'Exception':'Active')+(a.status.startsWith('Down')?' <span class="sub">'+esc(a.status)+'</span>':''),
+    ls:dstr(a.lastService),ns:due?'<span style="color:var(--red);font-weight:700">'+dstr(a.nextService)+' — DUE</span>':dstr(a.nextService),
+    a:'<button class="btn sm" onclick="serviceAsset(\''+listKey+'\',\''+a.id+'\')">Log service</button>'}}))+'</div></div>';
+}
+PAGES.equipment=()=>assetPage('Equipments','equipment','Warehouse equipment register with preventive-maintenance schedule.');
+PAGES.machines=()=>assetPage('Machineries','machines','Production machinery register — service logs feed the Weekly Equipment Maintenance checklist.');
+function newAsset(key){openModal('Add asset','<div class="frow"><div class="fld"><label>Name</label><input id="as-n" type="text"></div><div class="fld"><label>Serial</label><input id="as-s" type="text"></div></div>',
+ {onSave:()=>{db[key].push({id:uid('AS'),name:$('#as-n').value,serial:$('#as-s').value,status:'Active',lastService:todayISO(),nextService:daysAgo(-30)});closeModal();toast('Asset added');refresh()}})}
+function serviceAsset(key,id){const a=db[key].find(x=>x.id===id);a.lastService=todayISO();a.nextService=daysAgo(-30);a.status='Active';toast('Service logged for '+a.name);refresh()}
+
+/* ---- Logs ---- */
+PAGES.recvlogs=function(){
+  return pageHead('Receiving Logs','Auto-written by every Item Receipt: what arrived, condition, temp, COA, who received.')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'When',k:'w'},{h:'Ref',k:'r'},{h:'Vendor',k:'v'},{h:'Items',k:'i'},{h:'Temp',k:'t'},{h:'Condition',k:'c'},{h:'COA',k:'coa'},{h:'Received by',k:'u'}],
+   db.recvLogs.map(l=>({w:tstr(l.ts),r:'<b>'+esc(l.ref)+'</b>',v:esc(l.vendor),i:esc(l.items),t:l.temp,c:l.condition==='Good'?badge('Good','green'):badge(l.condition,'red'),coa:l.coa,u:esc(userById(l.by).name.split(' (')[0])})))+'</div></div>';
+};
+PAGES.shiplogs=function(){
+  return pageHead('Shipment Logs','Auto-written by Pack & Ship: every parcel/pallet that left the dock.')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'When',k:'w'},{h:'Order',k:'o'},{h:'Carrier',k:'c'},{h:'Tracking',k:'t'},{h:'Cartons',k:'ct',num:true},{h:'Shipped by',k:'u'}],
+   db.shipLogs.map(l=>({w:tstr(l.ts),o:'<b>'+esc(l.order)+'</b>',c:l.carrier,t:'<span class="mono">'+esc(l.tracking)+'</span>',ct:l.cartons,u:esc(userById(l.by).name.split(' (')[0])})))+'</div></div>';
+};
+PAGES.cleanlogs=function(){
+  return pageHead('Cleaning Logs','GMP sanitation records with chemical concentration and verification sign-off.','<button class="btn p" onclick="newCleanLog()">+ Log cleaning</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'When',k:'w'},{h:'Area',k:'a'},{h:'Chemicals',k:'c'},{h:'Done by',k:'u'},{h:'Verified by',k:'v'}],
+   db.cleanLogs.map(l=>({w:tstr(l.ts),a:esc(l.area),c:esc(l.chems),u:esc(userById(l.by).name.split(' (')[0]),v:l.verified?esc(userById(l.verified).name.split(' (')[0]):badge('Pending','amber')})))+'</div></div>';
+};
+function newCleanLog(){
+  openModal('Log Cleaning','<div class="frow"><div class="fld"><label>Area</label><select id="cn-a"><option>Production floor</option><option>Pack stations</option><option>Receiving dock</option><option>Restrooms</option><option>Band sealer & labeler</option></select></div><div class="fld"><label>Chemicals</label><input id="cn-c" type="text" value="Quat sanitizer 200ppm"></div></div>',
+  {onSave:()=>{db.cleanLogs.unshift({ts:nowTs(),area:$('#cn-a').value,chems:$('#cn-c').value,by:curUser.id,verified:isAdmin()?curUser.id:null});closeModal();toast('Cleaning logged');refresh()}});
+}
+
+/* ---- Groups & Members ---- */
+PAGES.groups=function(){
+  return pageHead('Groups','Teams with role-based permissions. Employees see floor pages; brand users see their own data only.')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Group',k:'g'},{h:'Lead',k:'l'},{h:'Members',k:'m'},{h:'Access',k:'a'}],
+   db.groups.map(g=>({g:'<b>'+esc(g.name)+'</b>',l:esc(userById(g.lead).name),m:g.members.map(m=>'<span class="avatar" title="'+esc(userById(m).name)+'">'+esc(userById(m).name[0])+'</span>').join(' '),
+    a:g.name.includes('Brand')?badge('Brand portal — own data only','purple'):badge('Warehouse floor pages','teal')})))+'</div></div>';
+};
+PAGES.members=function(){
+  return pageHead('Add Members','Invite users and assign a role. Role controls the sidebar & actions they can perform (try switching user in the top bar!).','<button class="btn p" onclick="newMember()">+ Invite member</button>')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'User',k:'u'},{h:'Role',k:'r'},{h:'Can do',k:'c'}],
+   db.users.map(u=>({u:'<span class="avatar">'+esc(u.name[0])+'</span> '+esc(u.name),r:badge(u.role,{admin:'red',employee:'blue',brand:'purple'}[u.role]),
+    c:u.role==='admin'?'Everything incl. approvals, checklist builder, POs':u.role==='employee'?'Pick/pack/ship, receive, tasks, job submissions':'View own orders, inventory, invoices, compliance'})))+'</div></div>';
+};
+function newMember(){
+  openModal('Invite Member','<div class="frow"><div class="fld"><label>Name</label><input id="mb-n" type="text"></div><div class="fld"><label>Role</label><select id="mb-r"><option value="employee">Warehouse employee</option><option value="admin">Admin</option><option value="brand">Brand user</option></select></div></div><div class="fld"><label>Email</label><input id="mb-e" type="email"></div>',
+  {saveLabel:'Send invite',onSave:()=>{if(!$('#mb-n').value)return toast('Name required','err');
+   db.users.push({id:uid('U'),name:$('#mb-n').value+' ('+$('#mb-r').value+')',role:$('#mb-r').value});
+   closeModal();toast('Invite sent ✉ — user added');initSelectors();refresh()}});
+}
+/* ---- EDI ---- */
+PAGES.edi=function(){
+  return pageHead('EDI Connections','Trading-partner connections. Inbound 850s become orders automatically; shipping sends 856 ASN + 810 invoice back.','<button class="btn p" onclick="newEdi()">+ Add trading partner</button>')+
+  '<div class="card"><div class="card-h">Trading partners</div><div class="card-b" style="padding:0">'+
+  table([{h:'Partner',k:'p'},{h:'Network / VAN',k:'v'},{h:'Documents',k:'d'},{h:'Status',k:'s'}],
+   db.edi.map(e=>({p:'<b>'+esc(e.partner)+'</b>',v:esc(e.via),d:e.docs.map(d=>'<span class="tag">'+d+'</span>').join(' '),s:sbadge(e.status)})))+'</div></div>'+
+  '<div class="card"><div class="card-h">Document log (newest first)</div><div class="card-b" style="padding:0">'+
+  table([{h:'When',k:'w'},{h:'Partner',k:'p'},{h:'Doc',k:'d'},{h:'Ref / PO',k:'r'},{h:'Direction',k:'dir'},{h:'Result',k:'s'}],
+   db.ediDocs.map(d=>({w:tstr(d.ts),p:esc(d.partner),d:badge(d.doc,d.doc.startsWith('850')?'blue':d.doc.startsWith('856')?'purple':d.doc.startsWith('810')?'green':'gray'),r:'<span class="mono">'+esc(d.ref)+'</span>',dir:d.dir==='IN'?'⬇ Inbound':'⬆ Outbound',s:esc(d.status)})))+'</div></div>';
+};
+function newEdi(){
+  openModal('Add Trading Partner','<div class="frow"><div class="fld"><label>Partner</label><input id="ed-p" type="text" placeholder="e.g. Target, UNFI, Kroger"></div><div class="fld"><label>VAN / Network</label><select id="ed-v"><option>SPS Commerce</option><option>TrueCommerce</option><option>Direct AS2</option><option>Stedi</option></select></div></div>'+
+  '<div class="fld"><label>Documents</label><p class="sub">850 PO · 855 Ack · 856 ASN · 810 Invoice (852 Sales Data optional — feeds forecasting)</p></div>',
+  {saveLabel:'Start setup',onSave:()=>{if(!$('#ed-p').value)return toast('Partner required','err');
+   db.edi.push({id:uid('E'),partner:$('#ed-p').value,via:$('#ed-v').value,docs:['850 PO','856 ASN','810 Invoice'],status:'Pending Setup'});
+   closeModal();toast('Partner added — mapping & testing phase started');refresh()}});
+}
+
+/* ---- EasyPost / ShipStation ---- */
+PAGES.shipapis=function(){
+  const ep=db.integrations.easypost,ss=db.integrations.shipstation;
+  return pageHead('EasyPost / ShipStation','Label buying, rate shopping and tracking webhooks.')+
+  '<div class="grid2">'+
+  '<div class="card"><div class="card-h">EasyPost '+sbadge(ep.connected?'Connected':'Pending Setup')+'</div><div class="card-b">'+
+   '<div class="frow"><div class="fld"><label>API key</label><input type="text" value="EZTK••••••••••••" disabled></div><div class="fld"><label>Mode</label><select onchange="db.integrations.easypost.mode=this.value;save();toast(\'Mode: \'+this.value)"><option'+(ep.mode==='Test'?' selected':'')+'>Test</option><option'+(ep.mode==='Production'?' selected':'')+'>Production</option></select></div></div>'+
+   '<p class="sub" style="margin-bottom:8px">Carriers enabled: '+ep.carriers.map(c=>'<span class="tag">'+c+'</span>').join(' ')+'</p>'+
+   '<button class="btn" onclick="toast(\'Webhook test OK — tracker.updated received ✓\')">Test tracking webhook</button></div></div>'+
+  '<div class="card"><div class="card-h">ShipStation '+sbadge(ss.connected?'Connected':'Pending Setup')+'</div><div class="card-b">'+
+   '<div class="frow"><div class="fld"><label>Store</label><input type="text" value="'+esc(ss.store)+'" disabled></div><div class="fld"><label>Last sync</label><input type="text" value="'+tstr(ss.lastSync)+'" disabled></div></div>'+
+   '<button class="btn" onclick="db.integrations.shipstation.lastSync=nowTs();save();toast(\'ShipStation sync complete — 0 new orders (all channels already ingested)\');refresh()">↻ Sync now</button></div></div></div>'+
+  '<div class="card"><div class="card-h">How labels flow</div><div class="card-b"><div class="flow">'+
+  '<div class="step">Order packed</div><span class="arr">→</span><div class="step">Rate shop<span class="s2">USPS / UPS / FedEx</span></div><span class="arr">→</span><div class="step">Buy label<span class="s2">EasyPost API</span></div><span class="arr">→</span><div class="step">Print 4×6<span class="s2">ZPL to Zebra</span></div><span class="arr">→</span><div class="step">Webhooks<span class="s2">in transit / delivered</span></div><span class="arr">→</span><div class="step hl">Shipments page<span class="s2">live status</span></div></div></div></div>';
+};
+
+/* ---- Channels ---- */
+PAGES.channels=function(){
+  return pageHead('Sales Channels','Marketplace & cart connections. Orders are pulled (or pushed via webhook) into Order Management and auto-allocate.')+
+  '<div class="card"><div class="card-b" style="padding:0">'+
+  table([{h:'Channel',k:'c'},{h:'Status',k:'s'},{h:'Sync',k:'y'},{h:'Open orders',k:'o',num:true},{h:'',k:'a'}],
+   db.integrations.channels.map(c=>({c:'<b>'+esc(c.name)+'</b>',s:sbadge(c.status),y:esc(c.sync),
+    o:db.orders.filter(o=>c.name.toLowerCase().includes(o.channel.toLowerCase())&&!['Shipped','Cancelled'].includes(o.status)).length,
+    a:'<button class="btn sm" onclick="simulateChannelOrder()">⇣ Pull orders</button>'})))+'</div></div>'+
+  '<div class="notice">💡 Roadmap: this same connection layer becomes the <b>network hub</b> — brands, co-manufacturers, suppliers and retailers all talking through PicknPack, with 852 sales data powering seasonal forecasts by category.</div>';
+};
+
+/* ---- Process Flows ---- */
+PAGES.flows=function(){
+  const F=(title,steps)=>'<div class="card"><div class="card-h">'+title+'</div><div class="card-b"><div class="flow">'+steps.map((s,i)=>'<div class="step'+(s[2]?' hl':'')+'">'+s[0]+(s[1]?'<span class="s2">'+s[1]+'</span>':'')+'</div>'+(i<steps.length-1?'<span class="arr">→</span>':'')).join('')+'</div></div></div>';
+  return pageHead('Process Flows','The core loops of the system, end to end.')+
+  F('Order-to-Cash (D2C & EDI)',[['Channel order','Amazon / TikTok / Shopify / EDI 850'],['Auto-allocate','FEFO holds by best-by',1],['Fulfillment queue','priority + assignee'],['Pick','scan location ▸ product ▸ qty'],['Pack','verify scan + package info'],['Label & ship','EasyPost rate shop'],['Carrier tracking','webhook events → Delivered',1],['Auto-invoice','810 + 856 if EDI'],['Customer portal','status + tracking visible']])+
+  F('Fulfillment Station (per order)',[['Open from queue','contextual action',1],['Step 1 · Pick','current-pick panel, wrong scans rejected'],['Step 2 · Pack','verify SKUs, box, weight'],['Step 3 · Label','buy cheapest rate'],['Step 4 · Complete','tracking events until Delivered',1]])+
+  F('Cycle Count Loop',[['Schedule count','per bin/zone',1],['Count physical','blind count vs system'],['Variance computed','$ impact by lot'],['Auto-adjust','posts to ledger',1],['History & audit','who counted, when']])+
+  F('Procure-to-Stock (RM/PM)',[['Reorder alert','below reorder point',1],['Draft PO'],['Send to vendor','email / EDI'],['Item receipt','scan bin + lot + best-by'],['QC / COA check'],['Putaway transfer'],['Receiving log','auto',1]])+
+  F('Make-to-Stock (Manufacturing)',[['Work order','from reorder or plan'],['BOM check','component availability',1],['Release to floor'],['Job tracker entry','employee submits'],['Admin approval','gate',1],['Build posted','consume lots → FG lot'],['Traceability','both directions']])+
+  F('Co-Man Flow (brand ↔ manufacturer)',[['Brand issues PO','to co-man',1],['Co-man produces','status: In Production'],['Partial receipts','completed qty'],['Inventory at co-man','multi-warehouse view'],['Brand allocates','to retail POs'],['Ship from co-man','3PL billing',1]])+
+  F('Compliance Loop',[['Checklist builder','per customer/brand',1],['Daily execution','who + when stamped'],['Date-by-date history'],['Logs','receiving / shipping / cleaning'],['Audit export','one click']])+
+  F('Job Approval Loop',[['Employee submits','qty, lot, machine, shift'],['Pending queue','admin badge',1],['Approve'],['Build + inventory posted'],['Or reject','with reason']]);
+};
+
+/* ---- Architecture ---- */
+PAGES.arch=function(){
+  return pageHead('System Architecture','How the production system is built — and how it grows into the multi-party network.')+
+  '<div class="card arch"><div class="card-h">High-level architecture</div><div class="card-b"><pre>'+
+esc(`┌────────────────────────────  EXTERNAL WORLD  ────────────────────────────┐
+│  Amazon · Shopify · TikTok · Veeqo      KeHE · C&S · DOT · QVC (EDI)      │
+│        │  REST APIs / webhooks                 │  850/855/856/810/852     │
+└────────┼───────────────────────────────────────┼──────────────────────────┘
+         ▼                                       ▼
+┌─ INTEGRATION LAYER ───────────────────────────────────────────────────────┐
+│  Channel connectors │ EDI gateway (SPS/TrueCommerce/AS2) │ EasyPost/      │
+│  (order ingestion)  │ (doc mapping + ack)                │ ShipStation    │
+└────────┬──────────────────────────────────────────────────────────────────┘
+         ▼  normalized events (order.created, shipment.shipped, ...)
+┌─ CORE SERVICES (multi-tenant: warehouse / brand / co-man / supplier) ─────┐
+│  Orders & Allocation (FEFO holds)   │  Purchasing & Receiving (smart scan)│
+│  Fulfillment queue + station        │  Manufacturing: WO → Build → Lot    │
+│  (priority, assignee, stepper)      │  Job Tracker w/ approval gate       │
+│  Warehouse ops: pick/pack/kitting   │  Cycle counting → auto adjustments  │
+│  Inventory ledger (every movement)  │  Compliance: checklist engine+logs  │
+│  Billing: auto-invoice per shipment │  Tracking events + customer portal  │
+└────────┬──────────────────────────────────────────────────────────────────┘
+         ▼
+┌─ DATA LAYER ──────────────────────────────────────────────────────────────┐
+│  PostgreSQL (tenant-scoped rows)  │  Event log (audit + traceability)     │
+│  Object store (labels, COAs, BOLs)│  Analytics warehouse → forecasting    │
+└───────────────────────────────────────────────────────────────────────────┘
+FUTURE NETWORK: each tenant (brand, co-man, supplier, retailer) is a node.
+A brand's PO to a co-man appears as the co-man's production order; the
+co-man's build updates the brand's inventory in real time. Retailer 852
+sales data per category feeds seasonal demand forecasts shared down the
+chain — one medium where all systems talk.`)+
+  '</pre></div></div>'+
+  '<div class="card"><div class="card-h">Core data model</div><div class="card-b arch"><pre>'+
+esc(`Tenant ─┬─ Users (roles: admin / employee / brand)
+        ├─ Items (FG/KIT/RM/PM) ── BOM lines ── Items
+        ├─ Lots (lot#, best-by) ── Inventory (item×lot×bin, qty, held)
+        ├─ Bins ── Warehouses (internal + 3PL nodes: DOT/KeHE/C&S)
+        ├─ Ledger (every movement: who, when, type, ref)  ← traceability
+        ├─ PO ── PO lines ── Receipts ── ReceivingLog
+        ├─ Order (channel, EDI ref, priority, assignee)
+        │     ├─ Allocations ── Picklist (scan-validated lines)
+        │     └─ Shipment ── TrackingEvents (label→pickup→transit→delivered)
+        │                └─ Invoice (auto, + 3PL fees for D2C)
+        ├─ CycleCount (bin, lines: sys vs counted → auto Adjustments)
+        ├─ WorkOrder ── Build (components consumed → FG lot out)
+        ├─ JobSubmission (pending → approved ⇒ Build)
+        └─ Checklist ── TaskRun (date × item × who × when)`)+
+  '</pre></div></div>'+
+  '<div class="card"><div class="card-h">Recommended build stack</div><div class="card-b">'+
+  '<p style="margin-bottom:8px"><b>Backend:</b> Node.js (NestJS) or Python (FastAPI) · PostgreSQL with row-level security for multi-tenancy · Redis for queues · event-sourced inventory ledger.</p>'+
+  '<p style="margin-bottom:8px"><b>Frontend:</b> React + this design system · PWA for handheld scanners (camera barcode scan via ZXing) · Zebra ZPL printing.</p>'+
+  '<p style="margin-bottom:8px"><b>Integrations:</b> EasyPost (labels+tracking) · ShipStation (optional channel aggregation) · SPS Commerce or Stedi for EDI · direct Amazon SP-API, Shopify Admin API, TikTok Shop API.</p>'+
+  '<p><b>Phase plan:</b> ① Core IMS/WMS (this prototype\'s scope) → ② EDI + billing automation → ③ Brand/co-man portals (multi-tenant network) → ④ Retailer 852-driven category forecasting.</p></div></div>'+
+  '<div class="card"><div class="card-h">👩‍💻 Developer handoff — order state machine & module map</div><div class="card-b arch"><pre>'+
+esc(`ORDER STATES
+ New → Allocated → Picking → Picked → Packed → Shipped (→ Delivered)
+   ↘ On Hold - Stock (insufficient FEFO stock or manual hold; retry allocates)
+   ↘ Cancelled (releases all holds)
+ Transitions are the ONLY things that touch inventory:
+   allocate: +alloc on item×lot×bin rows (FEFO by best-by)
+   pick:     move qty pick-bin → PACK-01, release hold  (scan-validated)
+   ship:     −qty from PACK-01, write TrackingEvents, create Shipment,
+             auto-create Invoice (+pick/pack fee & postage for D2C),
+             send EDI 856+810 when customer is an EDI partner
+
+PAGE → MODULE MAP (every page in the sidebar = one module)
+ Order Management .... order ingestion, split view, hold/cancel/assign
+ Fulfillment Queue ... work queue: tabs, priority, assignee, progress %
+ Order Station ....... stepper Pick→Pack→Label→Complete, inline scanning
+ Shipments ........... tracking events, carrier stats, void/manifest
+ Customer Portal ..... read-only status+tracking (future: per-account login)
+ Item Receipt ........ PO receiving, smart scan, lot/expiry/location
+ Cycle Count ......... blind counts → variance $ → auto adjustments
+ Builds/WO/Jobs ...... BOM check → consume lots → FG lot; approval gate
+ Checklists .......... template builder + dated runs (who/when stamped)
+ All movements append to the immutable Ledger (type, ref, user, ts).`)+
+  '</pre></div></div>';
+};
+
+/* ================= INIT ================= */
+function initSelectors(){
+  $('#usersel').innerHTML=selOpts(db.users,'id','name',curUser.id);
+  $('#brandsel').innerHTML=selOpts(db.brands,'id','name',curBrand);
+}
+load();
+curUser=db.users[0];
+initSelectors();
+if(!location.hash)location.hash='#/dashboard';
+route();
+setTimeout(()=>toast('Demo tip: switch User in the top bar to see employee & brand views. Data persists — add ?reset to URL or run resetDemo() to start over.'),800);
+if(location.search.includes('reset'))resetDemo();
+</script>
+</body>
+</html>
